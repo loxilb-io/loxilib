@@ -29,7 +29,7 @@ const (
 )
 
 type TrieData interface {
-	// Emtpy Interface
+	// Empty Interface
 }
 
 type TrieIterIntf interface {
@@ -315,7 +315,7 @@ func (t *TrieRoot) findTrieInt(tv *trieVar, currLevel int, ts *trieState) int {
 }
 
 func (t *TrieRoot) walkTrieInt(tv *trieVar, level int, ts *trieState, tf TrieIterIntf) int {
-	var p int = 0
+	var p int
 	var pfxIdx int
 	var pfxStr string
 
