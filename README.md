@@ -1,4 +1,4 @@
-![sanity workflow](https://github.com/loxilb-io/loxilib/actions/workflows/basic-sanity.yml/badge.svg)  [![Go Report Card](https://goreportcard.com/badge/github.com/loxilb-io/loxilib)](https://goreportcard.com/report/github.com/loxilb-io/loxilib)
+![sanity workflow](https://github.com/loxilb-io/loxilib/actions/workflows/basic-sanity.yml/badge.svg)  [![Go Report Card](https://goreportcard.com/badge/github.com/loxilb-io/loxilib?style=flat)](https://goreportcard.com/report/github.com/loxilb-io/loxilb)
 
 
 ## What is loxilib
