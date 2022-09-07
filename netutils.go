@@ -9,25 +9,31 @@ import (
 	"unsafe"
 )
 
+// Ntohl - Network to host byte-order long
 func Ntohl(i uint32) uint32 {
 	return binary.BigEndian.Uint32((*(*[4]byte)(unsafe.Pointer(&i)))[:])
 }
+
+// Htonl - Host to network byte-order long
 func Htonl(i uint32) uint32 {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, i)
 	return *(*uint32)(unsafe.Pointer(&b[0]))
 }
 
+// Htons - Host to network byte-order short
 func Htons(i uint16) uint16 {
 	var j = make([]byte, 2)
 	binary.BigEndian.PutUint16(j[0:2], i)
 	return *(*uint16)(unsafe.Pointer(&j[0]))
 }
 
+// Ntohs - Network to host byte-order short
 func Ntohs(i uint16) uint16 {
 	return binary.BigEndian.Uint16((*(*[2]byte)(unsafe.Pointer(&i)))[:])
 }
 
+// IPtonl - Convert net.IP to network byte-order long  
 func IPtonl(ip net.IP) uint32 {
 	var val uint32
 
@@ -46,6 +52,7 @@ func IPtonl(ip net.IP) uint32 {
 	return val
 }
 
+// NltoIP - Convert network byte-order long to net.IP
 func NltoIP(addr uint32) net.IP {
 	var dip net.IP
 

@@ -7,6 +7,7 @@ import (
 	"errors"
 )
 
+// Counter - context container
 type Counter struct {
 	begin    int
 	end      int
@@ -16,6 +17,7 @@ type Counter struct {
 	counters []int
 }
 
+// NewCounter - Allocate a set of counters
 func NewCounter(begin int, length int) *Counter {
 	counter := new(Counter)
 	counter.counters = make([]int, length)
@@ -27,35 +29,11 @@ func NewCounter(begin int, length int) *Counter {
 	for i := 0; i < length; i++ {
 		counter.counters[i] = i + 1
 	}
-	//fmt.Println(counter.counters)
 	counter.counters[length-1] = -1
 	return counter
 }
 
-func (C *Counter) Get_counter_p() (int, error) {
-	if C.start == -1 || C.cap <= 0 {
-		return -1, errors.New("Overflow")
-	}
-
-	var rid = C.start
-	C.start = C.counters[rid]
-	C.cap--
-
-	return rid + C.begin, nil
-}
-
-func (C *Counter) Put_counter_p(id int) error {
-	if id < C.begin || id >= C.begin+C.len || C.counters[id] == -1 {
-		return errors.New("Range")
-	}
-	var tmp = C.start
-	C.start = id
-	C.counters[id] = tmp
-	C.cap++
-
-	return nil
-}
-
+// GetCounter - Get next available counter
 func (C *Counter) GetCounter() (int, error) {
 	if C.cap <= 0 || C.start == -1 {
 		return -1, errors.New("Overflow")
@@ -72,6 +50,7 @@ func (C *Counter) GetCounter() (int, error) {
 	return rid + C.begin, nil
 }
 
+// PutCounter - Return a counter to the available list
 func (C *Counter) PutCounter(id int) error {
 	if id < C.begin || id >= C.begin+C.len {
 		return errors.New("Range")

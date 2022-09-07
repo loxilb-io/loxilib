@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-func HttpProber(urls string) bool {
+// HTTPProber - Do a http probe for given url
+// returns true/false depending on whether probing was successful
+func HTTPProber(urls string) bool {
 	timeout := time.Duration(2 * time.Second)
 	client := http.Client{Timeout: timeout}
 	r, e := client.Head(urls)
@@ -17,6 +19,10 @@ func HttpProber(urls string) bool {
 	return e == nil && r.StatusCode == 200
 }
 
+// L4ServiceProber - Do a probe for L4 service end-points
+// sType is "tcp" or "udp"
+// sName is end-point IP address in string format
+// returns true/false depending on whether probing was successful
 func L4ServiceProber(sType string, sName string) bool {
 	sOk := false
 	timeout := 1 * time.Second

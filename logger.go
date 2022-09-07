@@ -9,19 +9,22 @@ import (
 	"os"
 )
 
+// LogLevelT - Current log-level
 type LogLevelT int
 
+// Log levels
 const (
-	LOG_EMERG LogLevelT = iota
-	LOG_ALERT
-	LOG_CRITICAL
-	LOG_ERROR
-	LOG_WARNING
-	LOG_NOTICE
-	LOG_INFO
-	LOG_DEBUG
+	LogEmerg LogLevelT = iota
+	LogAlert
+	LogCritical
+	LogError
+	LogWarning
+	LogNotice
+	LogInfo
+	LogDebug
 )
 
+// variables used
 var (
 	LogTTY       bool
 	CurrLogLevel LogLevelT
@@ -35,13 +38,17 @@ var (
 	LogItDebug   *log.Logger
 )
 
+// LogItInit - Initialize the logger
+// logFile - name of the logfile
+// logLevel - specify current loglevel
+// toTTY - specify if logs need to be redirected to TTY as well or not
 func LogItInit(logFile string, logLevel LogLevelT, toTTY bool) {
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if logLevel < LOG_EMERG || logLevel > LOG_DEBUG {
+	if logLevel < LogEmerg || logLevel > LogDebug {
 		log.Fatal(err)
 	}
 
@@ -64,28 +71,28 @@ func LogIt(l LogLevelT, format string, v ...interface{}) {
 		return
 	}
 	switch l {
-	case LOG_EMERG:
+	case LogEmerg:
 		LogItEmer.Printf(format, v...)
 		break
-	case LOG_ALERT:
+	case LogAlert:
 		LogItAlert.Printf(format, v...)
 		break
-	case LOG_CRITICAL:
+	case LogCritical:
 		LogItCrit.Printf(format, v...)
 		break
-	case LOG_ERROR:
+	case LogError:
 		LogItErr.Printf(format, v...)
 		break
-	case LOG_WARNING:
+	case LogWarning:
 		LogItWarn.Printf(format, v...)
 		break
-	case LOG_NOTICE:
+	case LogNotice:
 		LogItNotice.Printf(format, v...)
 		break
-	case LOG_INFO:
+	case LogInfo:
 		LogItInfo.Printf(format, v...)
 		break
-	case LOG_DEBUG:
+	case LogDebug:
 		LogItDebug.Printf(format, v...)
 		break
 	default:

@@ -10,28 +10,33 @@ import (
 	"net"
 )
 
+// return codes
 const (
-	TRIE_SUCCESS    = 0
-	TRIE_ERR_GEN    = -1
-	TRIE_ERR_EXISTS = -2
-	TRIE_ERR_NOENT  = -3
-	TRIE_ERR_NOMEM  = -4
-	TRIE_ERR_UNK    = -5
-	TRIE_ERR_PREFIX = -6
+	TrieSuccess = -iota
+	TrieErrGeneric
+	TrieErrExists
+	TrieErrNoEnt
+	TrieErrNoMem
+	TrieErrUnknown
+	TrieErrPrefix
 )
 
+// constants
 const (
-	TRIE_JMP_LENGTH  = 8
-	PREFIX_ARR_LEN   = (1 << (TRIE_JMP_LENGTH + 1)) - 1
-	PREFIX_ARR_NBITS = ((PREFIX_ARR_LEN + TRIE_JMP_LENGTH) & ^TRIE_JMP_LENGTH) / TRIE_JMP_LENGTH
-	PTR_ARR_LEN      = (1 << TRIE_JMP_LENGTH)
-	PTR_ARR_NBITS    = ((PTR_ARR_LEN + TRIE_JMP_LENGTH) & ^TRIE_JMP_LENGTH) / TRIE_JMP_LENGTH
+	TrieJmpLength   = 8
+	PrefixArrLenfth = (1 << (TrieJmpLength + 1)) - 1
+	PrefixArrNbits  = ((PrefixArrLenfth + TrieJmpLength) & ^TrieJmpLength) / TrieJmpLength
+	PtrArrLength    = (1 << TrieJmpLength)
+	PtrArrNBits     = ((PtrArrLength + TrieJmpLength) & ^TrieJmpLength) / TrieJmpLength
 )
 
+// TrieData - Any user data to be associated with a trie node
 type TrieData interface {
 	// Empty Interface
 }
 
+// TrieIterIntf - Interface implementation needed for trie users to
+// traverse and convert data
 type TrieIterIntf interface {
 	TrieNodeWalker(b string)
 	TrieData2String(d TrieData) string
@@ -52,14 +57,16 @@ type trieState struct {
 	errCode         int
 }
 
+// TrieRoot - root of a trie data structure
 type TrieRoot struct {
 	v6         bool
-	prefixArr  [PREFIX_ARR_NBITS]uint8
-	ptrArr     [PTR_ARR_NBITS]uint8
-	prefixData [PREFIX_ARR_LEN]TrieData
-	ptrData    [PTR_ARR_LEN]*TrieRoot
+	prefixArr  [PrefixArrNbits]uint8
+	ptrArr     [PtrArrNBits]uint8
+	prefixData [PrefixArrLenfth]TrieData
+	ptrData    [PtrArrLength]*TrieRoot
 }
 
+// TrieInit - Initialize a trie root
 func TrieInit(v6 bool) *TrieRoot {
 	var root = new(TrieRoot)
 	root.v6 = v6
@@ -155,13 +162,13 @@ func (t *TrieRoot) addTrieInt(tv *trieVar, currLevel int, rPfxLen int, ts *trieS
 	var cval uint8 = tv.prefix[currLevel]
 	var nextRoot *TrieRoot
 
-	if rPfxLen > TRIE_JMP_LENGTH {
-		rPfxLen -= TRIE_JMP_LENGTH
-		ptrIdx := countSetBitsInArr(t.ptrArr[:], int(cval)-1)
-		if isBitSetInArr(t.ptrArr[:], int(cval)) == true {
+	if rPfxLen > TrieJmpLength {
+		rPfxLen -= TrieJmpLength
+		ptrIdx := CountSetBitsInArr(t.ptrArr[:], int(cval)-1)
+		if IsBitSetInArr(t.ptrArr[:], int(cval)) == true {
 			nextRoot = t.ptrData[ptrIdx]
 			if nextRoot == nil {
-				ts.errCode = TRIE_ERR_UNK
+				ts.errCode = TrieErrUnknown
 				return -1
 			}
 		} else {
@@ -173,24 +180,24 @@ func (t *TrieRoot) addTrieInt(tv *trieVar, currLevel int, rPfxLen int, ts *trieS
 				t.ptrData[ptrIdx] = nil
 			}
 			t.ptrData[ptrIdx] = nextRoot
-			setBitInArr(t.ptrArr[:], int(cval))
+			SetBitInArr(t.ptrArr[:], int(cval))
 		}
 		return nextRoot.addTrieInt(tv, currLevel+1, rPfxLen, ts)
 	} else {
-		shftBits := TRIE_JMP_LENGTH - rPfxLen
+		shftBits := TrieJmpLength - rPfxLen
 		basePos := (1 << rPfxLen) - 1
 		// Find value relevant to currently remaining prefix len
 		cval = cval >> shftBits
 		idx := basePos + int(cval)
-		if isBitSetInArr(t.prefixArr[:], idx) == true {
-			return TRIE_ERR_EXISTS
+		if IsBitSetInArr(t.prefixArr[:], idx) == true {
+			return TrieErrExists
 		}
-		pfxIdx := countSetBitsInArr(t.prefixArr[:], idx)
+		pfxIdx := CountSetBitsInArr(t.prefixArr[:], idx)
 		if t.prefixData[pfxIdx] != 0 {
 			expPrefixArrDat(t.prefixData[:], pfxIdx)
 			t.prefixData[pfxIdx] = 0
 		}
-		setBitInArr(t.prefixArr[:], idx)
+		SetBitInArr(t.prefixArr[:], idx)
 		t.prefixData[pfxIdx] = ts.trieData
 		return 0
 	}
@@ -206,10 +213,10 @@ func (t *TrieRoot) deleteTrieInt(tv *trieVar, currLevel int, rPfxLen int, ts *tr
 	var cval uint8 = tv.prefix[currLevel]
 	var nextRoot *TrieRoot
 
-	if rPfxLen > TRIE_JMP_LENGTH {
-		rPfxLen -= TRIE_JMP_LENGTH
-		ptrIdx := countSetBitsInArr(t.ptrArr[:], int(cval)-1)
-		if isBitSetInArr(t.ptrArr[:], int(cval)) == false {
+	if rPfxLen > TrieJmpLength {
+		rPfxLen -= TrieJmpLength
+		ptrIdx := CountSetBitsInArr(t.ptrArr[:], int(cval)-1)
+		if IsBitSetInArr(t.ptrArr[:], int(cval)) == false {
 			ts.matchFound = false
 			return -1
 		}
@@ -217,18 +224,18 @@ func (t *TrieRoot) deleteTrieInt(tv *trieVar, currLevel int, rPfxLen int, ts *tr
 		nextRoot = t.ptrData[ptrIdx]
 		if nextRoot == nil {
 			ts.matchFound = false
-			ts.errCode = TRIE_ERR_UNK
+			ts.errCode = TrieErrUnknown
 			return -1
 		}
 		nextRoot.deleteTrieInt(tv, currLevel+1, rPfxLen, ts)
 		if ts.matchFound == true && ts.lastMatchEmpty == true {
 			t.ptrData[ptrIdx] = nil
 			shrinkPtrArrDat(t.ptrData[:], ptrIdx)
-			unSetBitInArr(t.ptrArr[:], int(cval))
+			UnSetBitInArr(t.ptrArr[:], int(cval))
 		}
 		if ts.lastMatchEmpty == true {
-			if countAllSetBitsInArr(t.prefixArr[:]) == 0 &&
-				countAllSetBitsInArr(t.ptrArr[:]) == 0 {
+			if CountAllSetBitsInArr(t.prefixArr[:]) == 0 &&
+				CountAllSetBitsInArr(t.ptrArr[:]) == 0 {
 				ts.lastMatchEmpty = true
 			} else {
 				ts.lastMatchEmpty = false
@@ -239,32 +246,32 @@ func (t *TrieRoot) deleteTrieInt(tv *trieVar, currLevel int, rPfxLen int, ts *tr
 		}
 		return 0
 	} else {
-		shftBits := TRIE_JMP_LENGTH - rPfxLen
+		shftBits := TrieJmpLength - rPfxLen
 		basePos := (1 << rPfxLen) - 1
 
 		// Find value relevant to currently remaining prefix len
 		cval = cval >> shftBits
 		idx := basePos + int(cval)
-		if isBitSetInArr(t.prefixArr[:], idx) == false {
+		if IsBitSetInArr(t.prefixArr[:], idx) == false {
 			ts.matchFound = false
-			return TRIE_ERR_NOENT
+			return TrieErrNoEnt
 		}
-		pfxIdx := countSetBitsInArr(t.prefixArr[:], idx-1)
+		pfxIdx := CountSetBitsInArr(t.prefixArr[:], idx-1)
 		// Note - This assumes that prefix data should be non-zero
 		if t.prefixData[pfxIdx] != 0 {
 			t.prefixData[pfxIdx] = 0
 			shrinkPrefixArrDat(t.prefixData[:], pfxIdx)
-			unSetBitInArr(t.prefixArr[:], idx)
+			UnSetBitInArr(t.prefixArr[:], idx)
 			ts.matchFound = true
-			if countAllSetBitsInArr(t.prefixArr[:]) == 0 &&
-				countAllSetBitsInArr(t.ptrArr[:]) == 0 {
+			if CountAllSetBitsInArr(t.prefixArr[:]) == 0 &&
+				CountAllSetBitsInArr(t.ptrArr[:]) == 0 {
 				ts.lastMatchEmpty = true
 			}
 
 			return 0
 		}
 		ts.matchFound = false
-		ts.errCode = TRIE_ERR_UNK
+		ts.errCode = TrieErrUnknown
 		return -1
 	}
 }
@@ -279,15 +286,15 @@ func (t *TrieRoot) findTrieInt(tv *trieVar, currLevel int, ts *trieState) int {
 	// This assumes stride of length 8
 	var cval uint8 = tv.prefix[currLevel]
 
-	for rPfxLen := TRIE_JMP_LENGTH; rPfxLen >= 0; rPfxLen-- {
-		shftBits := TRIE_JMP_LENGTH - rPfxLen
+	for rPfxLen := TrieJmpLength; rPfxLen >= 0; rPfxLen-- {
+		shftBits := TrieJmpLength - rPfxLen
 		basePos := (1 << rPfxLen) - 1
 		// Find value relevant to currently remaining prefix len
 		cval = cval >> shftBits
 		idx = basePos + int(cval)
 		pfxVal := (idx - basePos) << shftBits
 
-		if isBitSetInArr(t.prefixArr[:], idx) == true {
+		if IsBitSetInArr(t.prefixArr[:], idx) == true {
 			ts.lastMatchLevel = currLevel
 			ts.lastMatchPfxLen = 8*currLevel + rPfxLen
 			ts.matchFound = true
@@ -297,8 +304,8 @@ func (t *TrieRoot) findTrieInt(tv *trieVar, currLevel int, ts *trieState) int {
 	}
 
 	cval = tv.prefix[currLevel]
-	ptrIdx := countSetBitsInArr(t.ptrArr[:], int(cval)-1)
-	if isBitSetInArr(t.ptrArr[:], int(cval)) == true {
+	ptrIdx := CountSetBitsInArr(t.ptrArr[:], int(cval)-1)
+	if IsBitSetInArr(t.ptrArr[:], int(cval)) == true {
 		if t.ptrData[ptrIdx] != nil {
 			nextRoot := t.ptrData[ptrIdx]
 			ts.lastMatchTv.prefix[currLevel] = byte(cval)
@@ -307,7 +314,7 @@ func (t *TrieRoot) findTrieInt(tv *trieVar, currLevel int, ts *trieState) int {
 	}
 
 	if ts.lastMatchLevel == currLevel {
-		pfxIdx := countSetBitsInArr(t.prefixArr[:], idx-1)
+		pfxIdx := CountSetBitsInArr(t.prefixArr[:], idx-1)
 		ts.trieData = t.prefixData[pfxIdx]
 	}
 
@@ -323,20 +330,20 @@ func (t *TrieRoot) walkTrieInt(tv *trieVar, level int, ts *trieState, tf TrieIte
 	pfxLen := 0
 	basePos := 0
 
-	for p = 0; p < PREFIX_ARR_LEN; p++ {
+	for p = 0; p < PrefixArrLenfth; p++ {
 		if n <= 0 {
 			pfxLen++
 			n = 1 << pfxLen
 			basePos = n - 1
 		}
-		if isBitSetInArr(t.prefixArr[:], p) == true {
-			shftBits := TRIE_JMP_LENGTH - pfxLen
-			pLevelPfxLen := level * TRIE_JMP_LENGTH
+		if IsBitSetInArr(t.prefixArr[:], p) == true {
+			shftBits := TrieJmpLength - pfxLen
+			pLevelPfxLen := level * TrieJmpLength
 			cval := (p - basePos) << shftBits
 			if p == 0 {
 				pfxIdx = 0
 			} else {
-				pfxIdx = countSetBitsInArr(t.prefixArr[:], p-1)
+				pfxIdx = CountSetBitsInArr(t.prefixArr[:], p-1)
 			}
 			pfxStr = ""
 			for i := 0; i < ts.maxLevels; i++ {
@@ -355,10 +362,10 @@ func (t *TrieRoot) walkTrieInt(tv *trieVar, level int, ts *trieState, tf TrieIte
 		}
 		n--
 	}
-	for p = 0; p < PTR_ARR_LEN; p++ {
-		if isBitSetInArr(t.ptrArr[:], p) == true {
+	for p = 0; p < PtrArrLength; p++ {
+		if IsBitSetInArr(t.ptrArr[:], p) == true {
 			cval := p
-			ptrIdx := countSetBitsInArr(t.ptrArr[:], p-1)
+			ptrIdx := CountSetBitsInArr(t.ptrArr[:], p-1)
 
 			if t.ptrData[ptrIdx] != nil {
 				nextRoot := t.ptrData[ptrIdx]
@@ -370,6 +377,9 @@ func (t *TrieRoot) walkTrieInt(tv *trieVar, level int, ts *trieState, tf TrieIte
 	return 0
 }
 
+// AddTrie - Add a trie entry
+// cidr is the route in cidr format and data is any user-defined data
+// returns 0 on success or non-zero error code on error
 func (t *TrieRoot) AddTrie(cidr string, data TrieData) int {
 	var tv trieVar
 	var ts = trieState{data, 0, 0, false, trieVar{}, false, 4, 0}
@@ -377,7 +387,7 @@ func (t *TrieRoot) AddTrie(cidr string, data TrieData) int {
 	pfxLen := cidr2TrieVar(cidr, &tv)
 
 	if pfxLen < 0 {
-		return TRIE_ERR_PREFIX
+		return TrieErrPrefix
 	}
 
 	ret := t.addTrieInt(&tv, 0, pfxLen, &ts)
@@ -388,6 +398,9 @@ func (t *TrieRoot) AddTrie(cidr string, data TrieData) int {
 	return 0
 }
 
+// DelTrie - Delete a trie entry
+// cidr is the route in cidr format
+// returns 0 on success or non-zero error code on error
 func (t *TrieRoot) DelTrie(cidr string) int {
 	var tv trieVar
 	var ts = trieState{0, 0, 0, false, trieVar{}, false, 4, 0}
@@ -395,17 +408,23 @@ func (t *TrieRoot) DelTrie(cidr string) int {
 	pfxLen := cidr2TrieVar(cidr, &tv)
 
 	if pfxLen < 0 {
-		return TRIE_ERR_PREFIX
+		return TrieErrPrefix
 	}
 
 	ret := t.deleteTrieInt(&tv, 0, pfxLen, &ts)
 	if ret != 0 || ts.errCode != 0 {
-		return TRIE_ERR_NOENT
+		return TrieErrNoEnt
 	}
 
 	return 0
 }
 
+// FindTrie - Lookup matching route as per longest prefix match
+// IP is the IP address in string format
+// returns the following :
+// 1. 0 on success or non-zero error code on error
+// 2. matching route in *net.IPNet form
+// 3. user-defined data associated with the trie entry
 func (t *TrieRoot) FindTrie(IP string) (int, *net.IPNet, TrieData) {
 	var tv trieVar
 	var ts = trieState{0, 0, 0, false, trieVar{}, false, 4, 0}
@@ -419,7 +438,7 @@ func (t *TrieRoot) FindTrie(IP string) (int, *net.IPNet, TrieData) {
 	pfxLen := cidr2TrieVar(cidr, &tv)
 
 	if pfxLen < 0 {
-		return TRIE_ERR_PREFIX, nil, 0
+		return TrieErrPrefix, nil, 0
 	}
 
 	t.findTrieInt(&tv, 0, &ts)
@@ -440,9 +459,10 @@ func (t *TrieRoot) FindTrie(IP string) (int, *net.IPNet, TrieData) {
 			return 0, &ipnet, ts.trieData
 		}
 	}
-	return TRIE_ERR_NOENT, nil, 0
+	return TrieErrNoEnt, nil, 0
 }
 
+// Trie2String - stringify the trie table
 func (t *TrieRoot) Trie2String(tf TrieIterIntf) {
 	var ts = trieState{0, 0, 0, false, trieVar{}, false, 4, 0}
 	t.walkTrieInt(&trieVar{}, 0, &ts, tf)

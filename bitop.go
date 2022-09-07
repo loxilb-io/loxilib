@@ -7,7 +7,8 @@ import (
 	"math/bits"
 )
 
-func countAllSetBitsInArr(arr []uint8) int {
+// CountAllSetBitsInArr - count set bits in an array of uint8
+func CountAllSetBitsInArr(arr []uint8) int {
 	var bCount int = 0
 	sz := len(arr)
 
@@ -18,7 +19,8 @@ func countAllSetBitsInArr(arr []uint8) int {
 	return bCount
 }
 
-func countSetBitsInArr(arr []uint8, bPos int) int {
+// CountSetBitsInArr - count set bits in an array of uint8 from bPos
+func CountSetBitsInArr(arr []uint8, bPos int) int {
 	bCount := 0
 	if int(bPos) >= 8*len(arr) {
 		return -1
@@ -41,7 +43,8 @@ func countSetBitsInArr(arr []uint8, bPos int) int {
 	return bCount
 }
 
-func isBitSetInArr(arr []uint8, bPos int) bool {
+// IsBitSetInArr - check given bPos bit is set in the array
+func IsBitSetInArr(arr []uint8, bPos int) bool {
 
 	if int(bPos) >= 8*len(arr) {
 		return false
@@ -57,7 +60,8 @@ func isBitSetInArr(arr []uint8, bPos int) bool {
 	return false
 }
 
-func setBitInArr(arr []uint8, bPos int) {
+// SetBitInArr - set bPos bit in the array
+func SetBitInArr(arr []uint8, bPos int) {
 
 	if int(bPos) >= 8*len(arr) {
 		return
@@ -70,7 +74,8 @@ func setBitInArr(arr []uint8, bPos int) {
 	return
 }
 
-func unSetBitInArr(arr []uint8, bPos int) {
+// UnSetBitInArr - unset bPos bit in the array
+func UnSetBitInArr(arr []uint8, bPos int) {
 
 	if int(bPos) >= 8*len(arr) {
 		return
