@@ -67,8 +67,8 @@ func NltoIP(addr uint32) net.IP {
 	return dip
 }
 
-// arpPing - sends a arp request given the DIP, SIP and interface name
-func arpPing(DIP net.IP, SIP net.IP, ifName string) (int, error) {
+// ArpPing - sends a arp request given the DIP, SIP and interface name
+func ArpPing(DIP net.IP, SIP net.IP, ifName string) (int, error) {
 	bZeroAddr := []byte{ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 }
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, int(Htons(syscall.ETH_P_ARP)))
 	if err != nil {
