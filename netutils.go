@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2.0
-// Copyright Copyright (c) 2022 NetLOX Inc
+// Copyright (c) 2022 NetLOX Inc
 
 package loxilib
 
