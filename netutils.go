@@ -4,13 +4,47 @@
 package loxilib
 
 import (
-	"encoding/binary"
-	"net"
-	"unsafe"
-	"syscall"
-	"errors"
+	"bufio"
 	"bytes"
+	"encoding/binary"
+	"errors"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+	"syscall"
+	"unsafe"
 )
+
+// constants related to ifstats
+const (
+	RxBytes = iota
+	RxPkts
+	RxErrors
+	RxDrops
+	RxFifo
+	RxFrame
+	RxComp
+	RxMcast
+	TxBytes
+	TxPkts
+	TxErrors
+	TxDrops
+	TxFifo
+	TxColls
+	TxCarr
+	TxComp
+	MaxSidx
+)
+
+const (
+	OsIfStatFile = "/proc/net/dev"
+)
+
+// IfiStat - Container of interface statistics
+type IfiStat struct {
+	Ifs [MaxSidx]uint64
+}
 
 // Ntohl - Network to host byte-order long
 func Ntohl(i uint32) uint32 {
@@ -36,7 +70,7 @@ func Ntohs(i uint16) uint16 {
 	return binary.BigEndian.Uint16((*(*[2]byte)(unsafe.Pointer(&i)))[:])
 }
 
-// IPtonl - Convert net.IP to network byte-order long  
+// IPtonl - Convert net.IP to network byte-order long
 func IPtonl(ip net.IP) uint32 {
 	var val uint32
 
@@ -69,7 +103,7 @@ func NltoIP(addr uint32) net.IP {
 
 // ArpPing - sends a arp request given the DIP, SIP and interface name
 func ArpPing(DIP net.IP, SIP net.IP, ifName string) (int, error) {
-	bZeroAddr := []byte{ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 }
+	bZeroAddr := []byte{0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, int(Htons(syscall.ETH_P_ARP)))
 	if err != nil {
 		return -1, errors.New("af-packet-err")
@@ -100,10 +134,10 @@ func ArpPing(DIP net.IP, SIP net.IP, ifName string) (int, error) {
 	buf := new(bytes.Buffer)
 
 	var sb = make([]byte, 2)
-	binary.BigEndian.PutUint16(sb, 1)  // HwType = 1
+	binary.BigEndian.PutUint16(sb, 1) // HwType = 1
 	buf.Write(sb)
 
-	binary.BigEndian.PutUint16(sb, 0x0800)  // protoType
+	binary.BigEndian.PutUint16(sb, 0x0800) // protoType
 	buf.Write(sb)
 
 	buf.Write([]byte{6}) // hwAddrLen
@@ -113,7 +147,7 @@ func ArpPing(DIP net.IP, SIP net.IP, ifName string) (int, error) {
 	buf.Write(sb)
 
 	buf.Write(ifi.HardwareAddr) // senderHwAddr
-	buf.Write(SIP.To4()) // senderProtoAddr
+	buf.Write(SIP.To4())        // senderProtoAddr
 
 	buf.Write(bZeroAddr) // targetHwAddr
 	buf.Write(DIP.To4()) // targetProtoAddr
@@ -126,4 +160,41 @@ func ArpPing(DIP net.IP, SIP net.IP, ifName string) (int, error) {
 	}
 
 	return 0, nil
+}
+
+// NetGetIfiStats - Get OS statistics for a given interface
+func NetGetIfiStats(ifName string, ifs *IfiStat) int {
+	file, err := os.Open(OsIfStatFile)
+	if err != nil {
+		return -1
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		content := scanner.Text()
+		ifi := strings.Split(content, ":")
+		if len(ifi) > 1 {
+			if ifi[0] != ifName {
+				continue
+			}
+
+			ifSfs := strings.Fields(ifi[1])
+			if len(ifSfs) >= MaxSidx {
+				for i := 0; i < MaxSidx; i++ {
+					val, err := strconv.ParseUint(ifSfs[i], 10, 64)
+					if err == nil {
+						ifs.Ifs[i] = val
+					}
+				}
+				break
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return -1
+	}
+
+	return 0
 }

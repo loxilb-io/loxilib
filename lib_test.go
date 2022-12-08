@@ -274,3 +274,12 @@ func TestCounter(t *testing.T) {
 		t.Errorf("Counter get got %d of expected %d", idx, 2)
 	}
 }
+
+func TestIfStat(t *testing.T) {
+	var ifs IfiStat
+
+	err := NetGetIfiStats("eth0", &ifs)
+	if err != 0 {
+		t.Errorf("Get stats failed for eth0")
+	}
+}
