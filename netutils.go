@@ -46,6 +46,16 @@ type IfiStat struct {
 	Ifs [MaxSidx]uint64
 }
 
+// IsNetIPv4 - Check if net.IP is ipv4 address
+func IsNetIPv4(address string) bool {
+	return strings.Count(address, ":") < 2
+}
+
+// IsNetIPv6 - Check if net.IP is ipv6 address
+func IsNetIPv6(address string) bool {
+	return strings.Count(address, ":") >= 2
+}
+
 // Ntohl - Network to host byte-order long
 func Ntohl(i uint32) uint32 {
 	return binary.BigEndian.Uint32((*(*[4]byte)(unsafe.Pointer(&i)))[:])
