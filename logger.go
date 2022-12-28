@@ -4,9 +4,11 @@
 package loxilib
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 // LogLevelT - Current log-level
@@ -24,8 +26,7 @@ const (
 	LogDebug
 )
 
-// variables used
-var (
+type Logger struct {
 	LogTTY       bool
 	CurrLogLevel LogLevelT
 	LogItEmer    *log.Logger
@@ -36,13 +37,17 @@ var (
 	LogItNotice  *log.Logger
 	LogItInfo    *log.Logger
 	LogItDebug   *log.Logger
+}
+
+var (
+	DefaultLogger *Logger
 )
 
 // LogItInit - Initialize the logger
 // logFile - name of the logfile
 // logLevel - specify current loglevel
 // toTTY - specify if logs need to be redirected to TTY as well or not
-func LogItInit(logFile string, logLevel LogLevelT, toTTY bool) {
+func LogItInit(logFile string, logLevel LogLevelT, toTTY bool) *Logger {
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -52,54 +57,83 @@ func LogItInit(logFile string, logLevel LogLevelT, toTTY bool) {
 		log.Fatal(err)
 	}
 
-	CurrLogLevel = logLevel
-	LogTTY = toTTY
-	LogItEmer = log.New(file, "EMER: ", log.Ldate|log.Ltime)
-	LogItAlert = log.New(file, "ALRT: ", log.Ldate|log.Ltime)
-	LogItCrit = log.New(file, "CRIT: ", log.Ldate|log.Ltime)
-	LogItErr = log.New(file, "ERR:  ", log.Ldate|log.Ltime)
-	LogItWarn = log.New(file, "WARN: ", log.Ldate|log.Ltime)
-	LogItNotice = log.New(file, "NOTI: ", log.Ldate|log.Ltime)
-	LogItInfo = log.New(file, "INFO: ", log.Ldate|log.Ltime)
-	LogItDebug = log.New(file, "DBG:  ", log.Ldate|log.Ltime)
+	logger := new(Logger)
+
+	logger.CurrLogLevel = logLevel
+	logger.LogTTY = toTTY
+	logger.LogItEmer = log.New(file, "EMER: ", log.Ldate|log.Ltime)
+	logger.LogItAlert = log.New(file, "ALRT: ", log.Ldate|log.Ltime)
+	logger.LogItCrit = log.New(file, "CRIT: ", log.Ldate|log.Ltime)
+	logger.LogItErr = log.New(file, "ERR:  ", log.Ldate|log.Ltime)
+	logger.LogItWarn = log.New(file, "WARN: ", log.Ldate|log.Ltime)
+	logger.LogItNotice = log.New(file, "NOTI: ", log.Ldate|log.Ltime)
+	logger.LogItInfo = log.New(file, "INFO: ", log.Ldate|log.Ltime)
+	logger.LogItDebug = log.New(file, "DBG:  ", log.Ldate|log.Ltime)
+
+	if DefaultLogger == nil {
+		DefaultLogger = logger
+	}
+
+	return logger
 }
 
-// LogIt uses Printf format internally
+// Log uses Printf format internally
 // Arguments are considered in-line with fmt.Printf.
-func LogIt(l LogLevelT, format string, v ...interface{}) {
-	if l < 0 || l > CurrLogLevel {
+func (logger *Logger) Log(l LogLevelT, format string, v ...interface{}) {
+	if l < 0 || l > logger.CurrLogLevel {
 		return
 	}
 	switch l {
 	case LogEmerg:
-		LogItEmer.Printf(format, v...)
+		logger.LogItEmer.Printf(format, v...)
 		break
 	case LogAlert:
-		LogItAlert.Printf(format, v...)
+		logger.LogItAlert.Printf(format, v...)
 		break
 	case LogCritical:
-		LogItCrit.Printf(format, v...)
+		logger.LogItCrit.Printf(format, v...)
 		break
 	case LogError:
-		LogItErr.Printf(format, v...)
+		logger.LogItErr.Printf(format, v...)
 		break
 	case LogWarning:
-		LogItWarn.Printf(format, v...)
+		logger.LogItWarn.Printf(format, v...)
 		break
 	case LogNotice:
-		LogItNotice.Printf(format, v...)
+		logger.LogItNotice.Printf(format, v...)
 		break
 	case LogInfo:
-		LogItInfo.Printf(format, v...)
+		logger.LogItInfo.Printf(format, v...)
 		break
 	case LogDebug:
-		LogItDebug.Printf(format, v...)
+		logger.LogItDebug.Printf(format, v...)
 		break
 	default:
 		break
 	}
 
-	if LogTTY == true {
+	if logger.LogTTY == true {
+		fmt.Printf("%s ", time.Now().Format("2006-01-02 15:04:05"))
 		fmt.Printf(format, v...)
 	}
+}
+
+// LogIt uses Printf format internally
+func LogIt(l LogLevelT, format string, v ...interface{}) {
+	if DefaultLogger == nil {
+		return
+	}
+
+	DefaultLogger.Log(l, format, v...)
+}
+
+// LogItSetLevel - Set level of the logger
+func (logger *Logger) LogItSetLevel(logLevel LogLevelT) error {
+
+	if logLevel < LogEmerg || logLevel > LogDebug {
+		return errors.New("LogLevel is out of bounds")
+	}
+
+	logger.CurrLogLevel = logLevel
+	return nil
 }
