@@ -15,6 +15,7 @@ const (
 type IpRange struct {
 	ipNet  net.IPNet
 	freeID *Counter
+	first  uint64
 	ident  map[uint32]struct{}
 }
 
@@ -74,6 +75,7 @@ func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 func (ipa *IpAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (net.IP, error) {
 	var ipCPool *IpClusterPool
 	var ipr *IpRange
+	var newIndex uint64
 	_, ipn, err := net.ParseCIDR(cidr)
 
 	if err != nil {
@@ -94,12 +96,21 @@ func (ipa *IpAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (n
 	}
 
 	if _, ok := ipr.ident[id]; ok {
-		return net.IP{0, 0, 0, 0}, errors.New("IP Range,Ident exists")
+		if id != 0 {
+			return net.IP{0, 0, 0, 0}, errors.New("IP Range,Ident exists")
+		}
 	}
 
-	newIndex, err := ipr.freeID.GetCounter()
-	if err != nil {
-		return net.IP{0, 0, 0, 0}, errors.New("IP Alloc counter failure")
+	if id == 0 || ipr.first == 0 {
+		newIndex, err = ipr.freeID.GetCounter()
+		if err != nil {
+			return net.IP{0, 0, 0, 0}, errors.New("IP Alloc counter failure")
+		}
+		if ipr.first == 0 {
+			ipr.first = newIndex
+		}
+	} else {
+		newIndex = ipr.first
 	}
 
 	ipr.ident[id] = struct{}{}
@@ -139,12 +150,14 @@ func (ipa *IpAllocator) DeAllocateIP(cluster string, cidr string, id uint32, IPS
 		return errors.New("IP return index not found")
 	}
 
-	err = ipr.freeID.PutCounter(retIndex)
-	if err != nil {
-		return errors.New("IP Range counter failure")
-	}
-
 	delete(ipr.ident, id)
+
+	if len(ipr.ident) == 0 {
+		err = ipr.freeID.PutCounter(retIndex)
+		if err != nil {
+			return errors.New("IP Range counter failure")
+		}
+	}
 
 	return nil
 }

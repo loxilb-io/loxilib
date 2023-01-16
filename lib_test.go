@@ -289,7 +289,7 @@ func TestIPAlloc(t *testing.T) {
 
 	ipa.AddIPRange(IPClusterDefault, "123.123.123.0/24")
 	for i := 0; i < 255; i++ {
-		ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(i))
+		ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(0))
 		if i >= 254 && err == nil {
 			t.Fatal("Failed IP Alloc for 123.123.123.0/24 - Check Alloc Algo")
 		} else if i < 254 && err != nil {
@@ -342,9 +342,12 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed for 12.12.0.0/16:1:%s", err)
 	}
 
-	_, err = ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 1)
+	ip2, err := ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 1)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 12.12.0.0/16:2:%s", err)
+	}
+	if ip2.String() != "12.12.0.1" {
+		t.Fatalf("Shared IP Alloc failed for 12.12.0.0/16:2:%s", err)
 	}
 
 	err = ipa.DeAllocateIP(IPClusterDefault, "12.12.0.0/16", 0, ip1.String())
