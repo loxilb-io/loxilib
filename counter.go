@@ -9,49 +9,49 @@ import (
 
 // Counter - context container
 type Counter struct {
-	begin    int
-	end      int
-	start    int
-	len      int
-	cap      int
-	counters []int
+	begin    uint64
+	end      uint64
+	start    uint64
+	len      uint64
+	cap      uint64
+	counters []uint64
 }
 
 // NewCounter - Allocate a set of counters
-func NewCounter(begin int, length int) *Counter {
+func NewCounter(begin uint64, length uint64) *Counter {
 	counter := new(Counter)
-	counter.counters = make([]int, length)
+	counter.counters = make([]uint64, length)
 	counter.begin = begin
 	counter.start = 0
 	counter.end = length - 1
 	counter.len = length
 	counter.cap = length
-	for i := 0; i < length; i++ {
+	for i := uint64(0); i < length; i++ {
 		counter.counters[i] = i + 1
 	}
-	counter.counters[length-1] = -1
+	counter.counters[length-1] = ^uint64(0)
 	return counter
 }
 
 // GetCounter - Get next available counter
-func (C *Counter) GetCounter() (int, error) {
-	if C.cap <= 0 || C.start == -1 {
-		return -1, errors.New("Overflow")
+func (C *Counter) GetCounter() (uint64, error) {
+	if C.cap <= 0 || C.start == ^uint64(0) {
+		return ^uint64(0), errors.New("Overflow")
 	}
 
 	C.cap--
 	var rid = C.start
 	if C.start == C.end {
-		C.start = -1
+		C.start = ^uint64(0)
 	} else {
 		C.start = C.counters[rid]
-		C.counters[rid] = -1
+		C.counters[rid] = ^uint64(0)
 	}
 	return rid + C.begin, nil
 }
 
 // PutCounter - Return a counter to the available list
-func (C *Counter) PutCounter(id int) error {
+func (C *Counter) PutCounter(id uint64) error {
 	if id < C.begin || id >= C.begin+C.len {
 		return errors.New("Range")
 	}
@@ -60,7 +60,7 @@ func (C *Counter) PutCounter(id int) error {
 	C.end = rid
 	C.counters[tmp] = rid
 	C.cap++
-	if C.start == -1 {
+	if C.start == ^uint64(0) {
 		C.start = C.end
 	}
 	return nil
