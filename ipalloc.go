@@ -17,6 +17,7 @@ const (
 type IPRange struct {
 	ipNet  net.IPNet
 	freeID *Counter
+	fOK    bool
 	first  uint64
 	ident  map[uint32]struct{}
 }
@@ -108,13 +109,14 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (n
 		}
 	}
 
-	if id == 0 || ipr.first == 0 {
+	if id == 0 || !ipr.fOK {
 		newIndex, err = ipr.freeID.GetCounter()
 		if err != nil {
 			return net.IP{0, 0, 0, 0}, errors.New("IP Alloc counter failure")
 		}
-		if ipr.first == 0 {
+		if !ipr.fOK {
 			ipr.first = newIndex
+			ipr.fOK = true
 		}
 	} else {
 		newIndex = ipr.first

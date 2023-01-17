@@ -426,4 +426,13 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed for 74.125.227.24:%s", ip1.String())
 	}
 
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "74.125.227.24/29", 1)
+	if err != nil {
+		t.Fatalf("IP Alloc failed for 100.100.100.1/32:%s", err)
+	}
+
+	if ip1.String() != "74.125.227.24" {
+		t.Fatalf("IP Alloc failed for 74.125.227.24:%s", ip1.String())
+	}
+
 }
