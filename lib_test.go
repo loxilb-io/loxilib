@@ -263,6 +263,11 @@ func TestCounter(t *testing.T) {
 		t.Errorf("Able to put invalid Counter %d", 15)
 	}
 
+	err = cR.ReserveCounter(15)
+	if err == nil {
+		t.Errorf("Able to put reserve Counter %d:%s", 15, err)
+	}
+
 	var idx uint64
 	idx, err = cR.GetCounter()
 	if idx != 5 || err != nil {
@@ -272,6 +277,51 @@ func TestCounter(t *testing.T) {
 	idx, err = cR.GetCounter()
 	if idx != 2 || err != nil {
 		t.Errorf("Counter get got %d of expected %d", idx, 2)
+	}
+
+	idx, err = cR.GetCounter()
+	if idx != ^uint64(0) || err == nil {
+		t.Errorf("Counter get got %d", idx)
+	}
+
+	err = cR.PutCounter(2)
+	if err != nil {
+		t.Errorf("failed to put valid Counter %d", 2)
+	}
+
+	err = cR.ReserveCounter(2)
+	if err != nil {
+		t.Errorf("failed to reserv valid Counter %d", 2)
+	}
+
+	_, err = cR.GetCounter()
+	if err == nil {
+		t.Errorf("Counter get passed unexpectedly %s", err)
+	}
+
+	err = cR.PutCounter(2)
+	if err != nil {
+		t.Errorf("failed to put valid Counter %d", 2)
+	}
+
+	_, err = cR.GetCounter()
+	if err != nil {
+		t.Errorf("Counter get failed unexpectedly %s", err)
+	}
+
+	cR = NewCounter(0, 5)
+	err = cR.ReserveCounter(0)
+	if err != nil {
+		t.Errorf("failed to reserve valid Counter %d", 0)
+	}
+
+	idx, err = cR.GetCounter()
+	if err != nil {
+		t.Errorf("failed to get valid Counter %d", 0)
+	}
+
+	if idx == 0 {
+		t.Errorf("reservation failed Counter %d", 1)
 	}
 }
 
@@ -433,6 +483,40 @@ func TestIPAlloc(t *testing.T) {
 
 	if ip1.String() != "74.125.227.24" {
 		t.Fatalf("IP Alloc failed for 74.125.227.24:%s", ip1.String())
+	}
+
+	err = ipa.DeleteIPRange(IPClusterDefault, "74.125.227.24/29")
+	if err != nil {
+		t.Fatalf("IP Delete Range failed for 74.125.227.24/29:%s", err)
+	}
+
+	ipa.AddIPRange(IPClusterDefault, "71.71.71.0/31")
+	err = ipa.ReserveIP(IPClusterDefault, "71.71.71.0/31", 0, "71.71.71.0")
+	if err != nil {
+		t.Fatal("Failed to reserve IP 71.71.71.0 - Check Alloc Algo")
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "71.71.71.0/31", 0)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 71.71.71.0/31 - Check Alloc Algo")
+	}
+
+	if ip.String() != "71.71.71.1" {
+		t.Fatalf("Failed IP Alloc for 71.71.71.0/31: %s:%s", ip.String(), "71.71.71.1")
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "71.71.71.0/31", 0, "71.71.71.0")
+	if err != nil {
+		t.Fatalf("Failed IP DeAlloc for 71.71.71.0/31:%s:%s", "71.71.71.0", err)
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "71.71.71.0/31", 0)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 71.71.71.0/31 - Check Alloc Algo")
+	}
+
+	if ip.String() != "71.71.71.0" {
+		t.Fatalf("Failed IP Alloc for 71.71.71.0/31: %s:%s", ip.String(), "71.71.71.0")
 	}
 
 }
