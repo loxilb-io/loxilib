@@ -77,6 +77,68 @@ func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 	return index
 }
 
+// ReserveIP - Don't allocate this IP address/ID pair from the given cluster and CIDR range
+// If id is 0, a new IP address will be allocated else IP addresses will be shared and
+// it will be same as the first IP address allocted for this range
+func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPString string) error {
+	var ipCPool *IPClusterPool
+	var ipr *IPRange
+	_, ipn, err := net.ParseCIDR(cidr)
+
+	if err != nil {
+		return errors.New("Invalid CIDR")
+	}
+
+	IP := net.ParseIP(IPString)
+	if IP == nil {
+		return errors.New("Invalid IP String")
+	}
+
+	if !ipn.Contains(IP) {
+		return errors.New("IP String out of bounds")
+	}
+
+	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
+		if err := ipa.AddIPRange(cluster, cidr); err != nil {
+			return errors.New("No such IP Cluster Pool")
+		}
+		if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
+			return errors.New("IP Range allocation failure")
+		}
+	}
+
+	if ipr = ipCPool.pool[cidr]; ipr == nil {
+		return errors.New("No such IP Range")
+	}
+
+	if _, ok := ipr.ident[id]; ok {
+		if id != 0 {
+			return errors.New("IP Range,Ident exists")
+		}
+	}
+
+	if id == 0 || !ipr.fOK {
+		retIndex := diffIPIndex(ipr.ipNet.IP, IP)
+		if retIndex <= 0 {
+			if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
+				return errors.New("IP return index not found")
+			}
+		}
+		err = ipr.freeID.ReserveCounter(retIndex)
+		if err != nil {
+			return errors.New("IP reserve counter failure")
+		}
+		if !ipr.fOK {
+			ipr.first = retIndex
+			ipr.fOK = true
+		}
+	}
+
+	ipr.ident[id] = struct{}{}
+
+	return nil
+}
+
 // AllocateNewIP - Allocate a New IP address from the given cluster and CIDR range
 // If id is 0, a new IP address will be allocated else IP addresses will be shared and
 // it will be same as the first IP address allocted for this range
@@ -105,7 +167,7 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (n
 
 	if _, ok := ipr.ident[id]; ok {
 		if id != 0 {
-			return net.IP{0, 0, 0, 0}, errors.New("IP Range,Ident exists")
+			return net.IP{0, 0, 0, 0}, errors.New("IP/Ident exists")
 		}
 	}
 
