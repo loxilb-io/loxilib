@@ -338,14 +338,20 @@ func TestIPAlloc(t *testing.T) {
 	ipa := IpAllocatorNew()
 
 	ipa.AddIPRange(IPClusterDefault, "123.123.123.0/24")
+	ipa.ReserveIP(IPClusterDefault, "123.123.123.0/24", 0, "123.123.123.2")
 	for i := 0; i < 255; i++ {
 		ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(0))
-		if i >= 254 && err == nil {
+		if i >= 253 && err == nil {
 			t.Fatal("Failed IP Alloc for 123.123.123.0/24 - Check Alloc Algo")
-		} else if i < 254 && err != nil {
+		} else if i < 253 && err != nil {
 			t.Fatalf("Failed IP Alloc for 123.123.123.0/24 : %d:%s", i, err)
 		} else if err == nil {
-			expected := fmt.Sprintf("123.123.123.%d", i+1)
+			expected := ""
+			if i < 1 {
+				expected = fmt.Sprintf("123.123.123.%d", i+1)
+			} else {
+				expected = fmt.Sprintf("123.123.123.%d", i+2)
+			}
 			if ip.String() != expected {
 				t.Fatalf("Failed IP Alloc for 123.123.123.0/24: %s:%s", ip.String(), expected)
 			}
