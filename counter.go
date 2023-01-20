@@ -76,10 +76,24 @@ func (C *Counter) ReserveCounter(id uint64) error {
 		return errors.New("Overflow")
 	}
 
-	tmp := C.start
-	C.start = C.counters[id]
-	C.end = tmp
-	C.counters[id] = ^uint64(0)
+	rid := id - C.begin
+	if C.counters[rid] == ^uint64(0) {
+		return errors.New("Already exists")
+	}
+
+	for i := uint64(0); i < C.len; i++ {
+		if C.counters[i] == rid {
+			C.counters[i] = C.counters[rid]
+		}
+	}
+
+	if C.start == rid {
+		C.start = C.counters[rid]
+	}
+	if C.end == rid {
+		C.end = C.counters[rid]
+	}
+	C.counters[rid] = ^uint64(0)
 	C.cap--
 
 	return nil
