@@ -11,6 +11,8 @@ import (
 // Constants
 const (
 	IPClusterDefault = "default"
+	IP4Len           = 4
+	IP6Len           = 16
 )
 
 // IPRange - Defines an IPRange
@@ -40,7 +42,7 @@ func addIPIndex(ip net.IP, index uint64) net.IP {
 	c := uint64(0)
 	arrIndex := len(ip) - 1
 
-	for i := 0; i < 8 && arrIndex >= 0 && v > 0; i++ {
+	for i := 0; i < IP6Len && arrIndex >= 0 && v > 0; i++ {
 		c = v / 255
 		retIP[arrIndex] += uint8((v + c) % 255)
 		arrIndex--
@@ -54,14 +56,14 @@ func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 	var index uint64
 	iplen := 0
 	if IsNetIPv4(baseIP.String()) {
-		iplen = 4
+		iplen = IP4Len
 	} else {
-		iplen = 16
+		iplen = IP6Len
 	}
 	arrIndex := len(baseIP) - iplen
 	arrIndex1 := len(IP) - iplen
 
-	for i := 0; i < 8 && arrIndex < iplen; i++ {
+	for i := 0; i < IP6Len && arrIndex < iplen; i++ {
 		basev := uint8(baseIP[arrIndex])
 		ipv := uint8(IP[arrIndex1])
 		if basev > ipv {

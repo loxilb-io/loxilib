@@ -439,6 +439,63 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed - 3ffe::1:%s", ip1.String())
 	}
 
+	err = ipa.DeAllocateIP(IPClusterDefault, "3ffe::/64", 0, ip1.String())
+	if err != nil {
+		t.Fatalf("IP DeAlloc failed for %s:%s", ip1.String(), err)
+	}
+
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0)
+	if err != nil {
+		t.Fatalf("IP Alloc failed for 3ffe::/64:%s", err)
+	}
+
+	if ip1.String() != "3ffe::2" {
+		t.Fatalf("IP Alloc failed - 3ffe::1:%s pass2", ip1.String())
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "3ffe::/64", 0, ip1.String())
+	if err != nil {
+		t.Fatalf("IP DeAlloc failed for %s:%s pass2", ip1.String(), err)
+	}
+
+	err = ipa.DeleteIPRange(IPClusterDefault, "3ffe::/64")
+	if err != nil {
+		t.Fatal("Failed to delete IP Alloc for 3ffe::/64 - Check Alloc Algo")
+	}
+
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0)
+	if err == nil {
+		t.Fatalf("IP Alloc unexpected success for 3ffe::/64:%s", err)
+	}
+
+	err = ipa.AddIPRange(IPClusterDefault, "4ffe::/64")
+	if err != nil {
+		t.Fatal("Failed to Add IP Range for 4ffe::/64")
+	}
+
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "4ffe::/64", 1)
+	if err != nil {
+		t.Fatalf("IP Alloc failed for 4ffe::/64:%s", err)
+	}
+
+	if ip1.String() != "4ffe::1" {
+		t.Fatalf("IP Alloc failed - 4ffe::1:%s", ip1.String())
+	}
+
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "4ffe::/64", 2)
+	if err != nil {
+		t.Fatalf("IP Alloc failed for 4ffe::/64:%s", err)
+	}
+
+	if ip1.String() != "4ffe::1" {
+		t.Fatalf("IP Alloc failed - 4ffe::1:%s", ip1.String())
+	}
+
+	err = ipa.DeleteIPRange(IPClusterDefault, "4ffe::/64")
+	if err != nil {
+		t.Fatal("Failed to delete IP Alloc for 4ffe::/64 - Check Alloc Algo")
+	}
+
 	err = ipa.AddIPRange(IPClusterDefault, "100.100.100.1/32")
 	if err != nil {
 		t.Fatal("Failed to Add IP Range for 100.100.100.1/32")
