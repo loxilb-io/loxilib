@@ -4,8 +4,11 @@
 package loxilib
 
 import (
+	"github.com/loxilb-io/sctp"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,16 +23,50 @@ func HTTPProber(urls string) bool {
 }
 
 // L4ServiceProber - Do a probe for L4 service end-points
-// sType is "tcp" or "udp"
+// sType is "tcp" or "udp" or "sctp"
 // sName is end-point IP address in string format
 // returns true/false depending on whether probing was successful
 func L4ServiceProber(sType string, sName string) bool {
 	sOk := false
 	timeout := 1 * time.Second
 
-	if sType != "tcp" && sType != "udp" {
+	if sType != "tcp" && sType != "udp" && sType != "sctp" {
 		// Unsupported
 		return true
+	}
+
+	if sType == "sctp" {
+		svcPair := strings.Split(sName, ":")
+		if len(svcPair) != 2 {
+			return sOk
+		}
+
+		svcPort, err := strconv.Atoi(svcPair[1])
+		if err == nil {
+			return sOk
+		}
+
+		epIp, err := net.ResolveIPAddr("ip", svcPair[0])
+		if err == nil {
+			return sOk
+		}
+
+		ips := []net.IPAddr{*epIp}
+
+		addr := &sctp.SCTPAddr{
+			IPAddrs: ips,
+			Port:    svcPort,
+		}
+
+		cn, err := sctp.DialSCTP("sctp", nil, addr)
+		if err != nil {
+			sOk = false
+		} else {
+			sOk = true
+			cn.Close()
+		}
+
+		return sOk
 	}
 
 	c, err := net.DialTimeout(sType, sName, timeout)
