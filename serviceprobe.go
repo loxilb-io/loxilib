@@ -4,12 +4,13 @@
 package loxilib
 
 import (
-	"github.com/loxilb-io/sctp"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/loxilb-io/sctp"
 )
 
 // HTTPProber - Do a http probe for given url
@@ -38,17 +39,17 @@ func L4ServiceProber(sType string, sName string) bool {
 	if sType == "sctp" {
 		svcPair := strings.Split(sName, ":")
 		if len(svcPair) != 2 {
-			return sOk
+			return false
 		}
 
 		svcPort, err := strconv.Atoi(svcPair[1])
-		if err == nil {
-			return sOk
+		if err != nil {
+			return false
 		}
 
 		epIp, err := net.ResolveIPAddr("ip", svcPair[0])
-		if err == nil {
-			return sOk
+		if err != nil {
+			return false
 		}
 
 		ips := []net.IPAddr{*epIp}
