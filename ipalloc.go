@@ -5,7 +5,9 @@ package loxilib
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"strings"
 )
 
 // Constants
@@ -15,13 +17,22 @@ const (
 	IP6Len           = 16
 )
 
+// IdentKey - key of IP Pool
+type IdentKey string
+
+// Generate a key with a combination of id and port.
+func getIdentKey(id uint32, proto string) IdentKey {
+	lowerProto := strings.ToLower(string(proto))
+	return IdentKey(fmt.Sprintf("%d|%s", id, lowerProto))
+}
+
 // IPRange - Defines an IPRange
 type IPRange struct {
 	ipNet  net.IPNet
 	freeID *Counter
 	fOK    bool
 	first  uint64
-	ident  map[uint32]struct{}
+	ident  map[IdentKey]struct{}
 }
 
 // IPClusterPool - Holds IP ranges for a cluster
@@ -82,40 +93,41 @@ func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 // ReserveIP - Don't allocate this IP address/ID pair from the given cluster and CIDR range
 // If id is 0, a new IP address will be allocated else IP addresses will be shared and
 // it will be same as the first IP address allocted for this range
-func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPString string) error {
+func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPString string, proto string) error {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	_, ipn, err := net.ParseCIDR(cidr)
 
 	if err != nil {
-		return errors.New("Invalid CIDR")
+		return errors.New("invalid CIDR")
 	}
 
 	IP := net.ParseIP(IPString)
 	if IP == nil {
-		return errors.New("Invalid IP String")
+		return errors.New("invalid IP String")
 	}
 
 	if !ipn.Contains(IP) {
-		return errors.New("IP String out of bounds")
+		return errors.New("ip string out of bounds")
 	}
 
 	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
 		if err := ipa.AddIPRange(cluster, cidr); err != nil {
-			return errors.New("No such IP Cluster Pool")
+			return errors.New("no such IP Cluster Pool")
 		}
 		if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
-			return errors.New("IP Range allocation failure")
+			return errors.New("ip range allocation failure")
 		}
 	}
 
 	if ipr = ipCPool.pool[cidr]; ipr == nil {
-		return errors.New("No such IP Range")
+		return errors.New("no such IP Range")
 	}
 
-	if _, ok := ipr.ident[id]; ok {
+	key := getIdentKey(id, proto)
+	if _, ok := ipr.ident[key]; ok {
 		if id != 0 {
-			return errors.New("IP Range,Ident exists")
+			return errors.New("ip Range,Ident,proto exists")
 		}
 	}
 
@@ -123,12 +135,12 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPStri
 		retIndex := diffIPIndex(ipr.ipNet.IP, IP)
 		if retIndex <= 0 {
 			if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
-				return errors.New("IP return index not found")
+				return errors.New("ip return index not found")
 			}
 		}
 		err = ipr.freeID.ReserveCounter(retIndex)
 		if err != nil {
-			return errors.New("IP reserve counter failure")
+			return errors.New("ip reserve counter failure")
 		}
 		if !ipr.fOK {
 			ipr.first = retIndex
@@ -136,7 +148,7 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPStri
 		}
 	}
 
-	ipr.ident[id] = struct{}{}
+	ipr.ident[key] = struct{}{}
 
 	return nil
 }
@@ -144,39 +156,40 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPStri
 // AllocateNewIP - Allocate a New IP address from the given cluster and CIDR range
 // If id is 0, a new IP address will be allocated else IP addresses will be shared and
 // it will be same as the first IP address allocted for this range
-func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (net.IP, error) {
+func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32, proto string) (net.IP, error) {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	var newIndex uint64
 	_, ipn, err := net.ParseCIDR(cidr)
 
 	if err != nil {
-		return net.IP{0, 0, 0, 0}, errors.New("Invalid CIDR")
+		return net.IP{0, 0, 0, 0}, errors.New("invalid CIDR")
 	}
 
 	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
 		if err := ipa.AddIPRange(cluster, cidr); err != nil {
-			return net.IP{0, 0, 0, 0}, errors.New("No such IP Cluster Pool")
+			return net.IP{0, 0, 0, 0}, errors.New("no such IP Cluster Pool")
 		}
 		if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
-			return net.IP{0, 0, 0, 0}, errors.New("IP Range allocation failure")
+			return net.IP{0, 0, 0, 0}, errors.New("ip Range allocation failure")
 		}
 	}
 
 	if ipr = ipCPool.pool[cidr]; ipr == nil {
-		return net.IP{0, 0, 0, 0}, errors.New("No such IP Range")
+		return net.IP{0, 0, 0, 0}, errors.New("no such IP Range")
 	}
 
-	if _, ok := ipr.ident[id]; ok {
+	key := getIdentKey(id, proto)
+	if _, ok := ipr.ident[key]; ok {
 		if id != 0 {
-			return net.IP{0, 0, 0, 0}, errors.New("IP/Ident exists")
+			return net.IP{0, 0, 0, 0}, errors.New("ip/ident exists")
 		}
 	}
 
 	if id == 0 || !ipr.fOK {
 		newIndex, err = ipr.freeID.GetCounter()
 		if err != nil {
-			return net.IP{0, 0, 0, 0}, errors.New("IP Alloc counter failure")
+			return net.IP{0, 0, 0, 0}, errors.New("ip Alloc counter failure")
 		}
 		if !ipr.fOK {
 			ipr.first = newIndex
@@ -186,7 +199,7 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (n
 		newIndex = ipr.first
 	}
 
-	ipr.ident[id] = struct{}{}
+	ipr.ident[key] = struct{}{}
 
 	retIP := addIPIndex(ipn.IP, uint64(newIndex))
 
@@ -194,44 +207,45 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32) (n
 }
 
 // DeAllocateIP - Deallocate the IP address from the given cluster and CIDR range
-func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, id uint32, IPString string) error {
+func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, id uint32, IPString string, proto string) error {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	_, _, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return errors.New("Invalid CIDR")
+		return errors.New("invalid CIDR")
 	}
 
 	IP := net.ParseIP(IPString)
 	if IP == nil {
-		return errors.New("Invalid IP String")
+		return errors.New("invalid IP String")
 	}
 
 	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
-		return errors.New("IP Cluster not found")
+		return errors.New("ip Cluster not found")
 	}
 
 	if ipr = ipCPool.pool[cidr]; ipr == nil {
-		return errors.New("No such IP Range")
+		return errors.New("no such IP Range")
 	}
 
-	if _, ok := ipr.ident[id]; !ok {
-		return errors.New("IP Range - Ident not found")
+	key := getIdentKey(id, proto)
+	if _, ok := ipr.ident[key]; !ok {
+		return errors.New("ip Range - Ident not found")
 	}
 
 	retIndex := diffIPIndex(ipr.ipNet.IP, IP)
 	if retIndex <= 0 {
 		if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
-			return errors.New("IP return index not found")
+			return errors.New("ip return index not found")
 		}
 	}
 
-	delete(ipr.ident, id)
+	delete(ipr.ident, key)
 
 	if len(ipr.ident) == 0 {
 		err = ipr.freeID.PutCounter(retIndex)
 		if err != nil {
-			return errors.New("IP Range counter failure")
+			return errors.New("ip Range counter failure")
 		}
 	}
 
@@ -244,7 +258,7 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 
 	ip, ipn, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return errors.New("Invalid CIDR")
+		return errors.New("invalid CIDR")
 	}
 
 	ipCPool = ipa.ipBlocks[IPClusterDefault]
@@ -258,12 +272,12 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	}
 
 	if ipCPool == nil {
-		return errors.New("Can't find IP Cluster Pool")
+		return errors.New("can't find IP Cluster Pool")
 	}
 
 	for _, ipr := range ipCPool.pool {
 		if ipr.ipNet.Contains(ip) {
-			return errors.New("Existing IP Pool")
+			return errors.New("existing IP Pool")
 		}
 	}
 
@@ -292,7 +306,7 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	}
 
 	if iprSz < 1 {
-		return errors.New("IP Pool subnet error")
+		return errors.New("ip pool subnet error")
 	}
 
 	if iprSz > uint64(^uint16(0)) {
@@ -304,10 +318,10 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	ipr.freeID = NewCounter(start, iprSz)
 
 	if ipr.freeID == nil {
-		return errors.New("IP Pool alloc failed")
+		return errors.New("ip pool alloc failed")
 	}
 
-	ipr.ident = make(map[uint32]struct{})
+	ipr.ident = make(map[IdentKey]struct{})
 	ipCPool.pool[cidr] = ipr
 
 	return nil
@@ -319,15 +333,15 @@ func (ipa *IPAllocator) DeleteIPRange(cluster string, cidr string) error {
 	_, _, err := net.ParseCIDR(cidr)
 
 	if err != nil {
-		return errors.New("Invalid CIDR")
+		return errors.New("invalid CIDR")
 	}
 
 	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
-		return errors.New("No such IP Cluster Pool")
+		return errors.New("no such IP Cluster Pool")
 	}
 
 	if ipr := ipCPool.pool[cidr]; ipr == nil {
-		return errors.New("No such IP Range")
+		return errors.New("no such IP Range")
 	}
 
 	delete(ipCPool.pool, cidr)

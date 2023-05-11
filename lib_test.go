@@ -144,7 +144,7 @@ func TestTrie(t *testing.T) {
 		t.Fatalf("failed to delete %s", route)
 	}
 
-	ret1, _, rdata1 = trieR.FindTrie("195.41.3.1")
+	ret1, _, _ = trieR.FindTrie("195.41.3.1")
 	if ret1 == 0 {
 		t.Fatalf("failed to find %s", "195.41.3.1")
 	}
@@ -336,11 +336,12 @@ func TestIfStat(t *testing.T) {
 
 func TestIPAlloc(t *testing.T) {
 	ipa := IpAllocatorNew()
+	proto := "tcp"
 
 	ipa.AddIPRange(IPClusterDefault, "123.123.123.0/24")
-	ipa.ReserveIP(IPClusterDefault, "123.123.123.0/24", 0, "123.123.123.2")
+	ipa.ReserveIP(IPClusterDefault, "123.123.123.0/24", 0, "123.123.123.2", proto)
 	for i := 0; i < 255; i++ {
-		ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(0))
+		ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(0), proto)
 		if i >= 253 && err == nil {
 			t.Fatal("Failed IP Alloc for 123.123.123.0/24 - Check Alloc Algo")
 		} else if i < 253 && err != nil {
@@ -358,18 +359,18 @@ func TestIPAlloc(t *testing.T) {
 		}
 	}
 
-	err := ipa.DeAllocateIP(IPClusterDefault, "123.123.123.0/24", 0, "123.123.123.1")
+	err := ipa.DeAllocateIP(IPClusterDefault, "123.123.123.0/24", 0, "123.123.123.1", proto)
 	if err != nil {
 		t.Fatalf("IP DeAlloc failed for %s:%s", "123.123.123.1", err)
 	}
 
-	ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(0))
+	ip, err := ipa.AllocateNewIP(IPClusterDefault, "123.123.123.0/24", uint32(0), proto)
 	if err != nil || ip.String() != "123.123.123.1" {
 		t.Fatalf("Failed IP Alloc for 123.123.123.0/24:%s", "123.123.123.1")
 	}
 
 	ipa.AddIPRange(IPClusterDefault, "11.11.11.0/31")
-	ip, err = ipa.AllocateNewIP(IPClusterDefault, "11.11.11.0/31", 0)
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "11.11.11.0/31", 0, proto)
 	if err != nil {
 		t.Fatal("Failed IP Alloc for 11.11.11.0/31 - Check Alloc Algo")
 	}
@@ -378,7 +379,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("Failed IP Alloc for 11.11.11.0/31: %s:%s", ip.String(), "11.11.11.0")
 	}
 
-	ip, err = ipa.AllocateNewIP(IPClusterDefault, "11.11.11.0/31", 0)
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "11.11.11.0/31", 0, proto)
 	if err != nil {
 		t.Fatal("Failed IP Alloc for 11.11.11.0/31 - Check Alloc Algo")
 	}
@@ -387,7 +388,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("Failed IP Alloc for 11.11.11.0/31: %s:%s", ip.String(), "11.11.11.1")
 	}
 
-	ip, err = ipa.AllocateNewIP(IPClusterDefault, "11.11.11.0/31", 0)
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "11.11.11.0/31", 0, proto)
 	if err == nil {
 		t.Fatal("Invalid IP Alloc for 11.11.11.0/31 - Check Alloc Algo")
 	}
@@ -402,12 +403,12 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatal("Failed to Add IP Range for 12.12.0.0/16")
 	}
 
-	ip1, err := ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 0)
+	ip1, err := ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 12.12.0.0/16:1:%s", err)
 	}
 
-	ip2, err := ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 1)
+	ip2, err := ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 1, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 12.12.0.0/16:2:%s", err)
 	}
@@ -415,12 +416,12 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("Shared IP Alloc failed for 12.12.0.0/16:2:%s", err)
 	}
 
-	err = ipa.DeAllocateIP(IPClusterDefault, "12.12.0.0/16", 0, ip1.String())
+	err = ipa.DeAllocateIP(IPClusterDefault, "12.12.0.0/16", 0, ip1.String(), proto)
 	if err != nil {
 		t.Fatalf("IP DeAlloc failed for %s:%s", ip1.String(), err)
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 0)
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "12.12.0.0/16", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 12.12.0.0/16:1:%s", err)
 	}
@@ -430,7 +431,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatal("Failed to Add IP Range for 3ffe::/64")
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 3ffe::/64:%s", err)
 	}
@@ -439,12 +440,12 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed - 3ffe::1:%s", ip1.String())
 	}
 
-	err = ipa.DeAllocateIP(IPClusterDefault, "3ffe::/64", 0, ip1.String())
+	err = ipa.DeAllocateIP(IPClusterDefault, "3ffe::/64", 0, ip1.String(), proto)
 	if err != nil {
 		t.Fatalf("IP DeAlloc failed for %s:%s", ip1.String(), err)
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 3ffe::/64:%s", err)
 	}
@@ -453,7 +454,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed - 3ffe::1:%s pass2", ip1.String())
 	}
 
-	err = ipa.DeAllocateIP(IPClusterDefault, "3ffe::/64", 0, ip1.String())
+	err = ipa.DeAllocateIP(IPClusterDefault, "3ffe::/64", 0, ip1.String(), proto)
 	if err != nil {
 		t.Fatalf("IP DeAlloc failed for %s:%s pass2", ip1.String(), err)
 	}
@@ -463,7 +464,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatal("Failed to delete IP Alloc for 3ffe::/64 - Check Alloc Algo")
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0)
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "3ffe::/64", 0, proto)
 	if err == nil {
 		t.Fatalf("IP Alloc unexpected success for 3ffe::/64:%s", err)
 	}
@@ -473,7 +474,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatal("Failed to Add IP Range for 4ffe::/64")
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "4ffe::/64", 1)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "4ffe::/64", 1, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 4ffe::/64:%s", err)
 	}
@@ -482,7 +483,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed - 4ffe::1:%s", ip1.String())
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "4ffe::/64", 2)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "4ffe::/64", 2, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 4ffe::/64:%s", err)
 	}
@@ -501,7 +502,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatal("Failed to Add IP Range for 100.100.100.1/32")
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "100.100.100.1/32", 0)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "100.100.100.1/32", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 100.100.100.1/32:%s", err)
 	}
@@ -510,17 +511,17 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed - 100.100.100.1:%s", ip1.String())
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "100.100.100.1/32", 0)
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "100.100.100.1/32", 0, proto)
 	if err == nil {
 		t.Fatalf("IP Alloc should fail for 100.100.100.1/32:%s", err)
 	}
 
-	err = ipa.DeAllocateIP(IPClusterDefault, "100.100.100.1/32", 0, "100.100.100.1")
+	err = ipa.DeAllocateIP(IPClusterDefault, "100.100.100.1/32", 0, "100.100.100.1", proto)
 	if err != nil {
 		t.Fatalf("IP DeAlloc failed for %s:%s", "100.100.100.1", err)
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "100.100.100.1/32", 0)
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "100.100.100.1/32", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 100.100.100.1/32:%s", err)
 	}
@@ -530,7 +531,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed for 74.125.227.24/29:%s", err)
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "74.125.227.24/29", 0)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "74.125.227.24/29", 0, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 100.100.100.1/32:%s", err)
 	}
@@ -539,7 +540,7 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP Alloc failed for 74.125.227.24:%s", ip1.String())
 	}
 
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "74.125.227.24/29", 1)
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "74.125.227.24/29", 1, proto)
 	if err != nil {
 		t.Fatalf("IP Alloc failed for 100.100.100.1/32:%s", err)
 	}
@@ -554,12 +555,12 @@ func TestIPAlloc(t *testing.T) {
 	}
 
 	ipa.AddIPRange(IPClusterDefault, "71.71.71.0/31")
-	err = ipa.ReserveIP(IPClusterDefault, "71.71.71.0/31", 0, "71.71.71.0")
+	err = ipa.ReserveIP(IPClusterDefault, "71.71.71.0/31", 0, "71.71.71.0", proto)
 	if err != nil {
 		t.Fatal("Failed to reserve IP 71.71.71.0 - Check Alloc Algo")
 	}
 
-	ip, err = ipa.AllocateNewIP(IPClusterDefault, "71.71.71.0/31", 0)
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "71.71.71.0/31", 0, proto)
 	if err != nil {
 		t.Fatal("Failed IP Alloc for 71.71.71.0/31 - Check Alloc Algo")
 	}
@@ -568,12 +569,12 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("Failed IP Alloc for 71.71.71.0/31: %s:%s", ip.String(), "71.71.71.1")
 	}
 
-	err = ipa.DeAllocateIP(IPClusterDefault, "71.71.71.0/31", 0, "71.71.71.0")
+	err = ipa.DeAllocateIP(IPClusterDefault, "71.71.71.0/31", 0, "71.71.71.0", proto)
 	if err != nil {
 		t.Fatalf("Failed IP DeAlloc for 71.71.71.0/31:%s:%s", "71.71.71.0", err)
 	}
 
-	ip, err = ipa.AllocateNewIP(IPClusterDefault, "71.71.71.0/31", 0)
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "71.71.71.0/31", 0, proto)
 	if err != nil {
 		t.Fatal("Failed IP Alloc for 71.71.71.0/31 - Check Alloc Algo")
 	}
