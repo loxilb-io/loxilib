@@ -5,6 +5,8 @@ package loxilib
 
 import (
 	"fmt"
+	"github.com/loxilb-io/sctp"
+	"net"
 	"testing"
 )
 
@@ -582,5 +584,29 @@ func TestIPAlloc(t *testing.T) {
 	if ip.String() != "71.71.71.0" {
 		t.Fatalf("Failed IP Alloc for 71.71.71.0/31: %s:%s", ip.String(), "71.71.71.0")
 	}
+}
 
+func TestProber(t *testing.T) {
+	epIp, err := net.ResolveIPAddr("ip", "127.0.0.1")
+	if err != nil {
+		t.Fatal("Failed to resolve IP")
+	}
+
+	ips := []net.IPAddr{*epIp}
+
+	addr := &sctp.SCTPAddr{
+		IPAddrs: ips,
+		Port:    8080,
+	}
+
+	cn, err := sctp.DialSCTP("sctp", nil, addr, false)
+	if err == nil {
+		t.Logf("sctp prober connected")
+		cn.Close()
+	} else {
+		t.Logf("sctp prober not connected %s", err)
+	}
+
+	// We are checking if this blocks forever
+	t.Logf("sctp prober test OK")
 }
