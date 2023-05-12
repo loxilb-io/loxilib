@@ -4,13 +4,12 @@
 package loxilib
 
 import (
+	"github.com/loxilb-io/sctp"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/loxilb-io/sctp"
 )
 
 // HTTPProber - Do a http probe for given url
@@ -59,7 +58,7 @@ func L4ServiceProber(sType string, sName string) bool {
 			Port:    svcPort,
 		}
 
-		cn, err := sctp.DialSCTP("sctp", nil, addr)
+		cn, err := sctp.DialSCTP("sctp", nil, addr, false)
 		if err != nil {
 			sOk = false
 		} else {
