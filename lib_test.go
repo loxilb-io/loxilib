@@ -607,6 +607,14 @@ func TestProber(t *testing.T) {
 		t.Logf("sctp prober not connected %s", err)
 	}
 
+	cn, err = sctp.DialSCTP("sctp", nil, addr, true)
+	if err == nil {
+		t.Logf("sctp (block) prober connected")
+		cn.Close()
+	} else {
+		t.Logf("sctp (block) prober not connected %s", err)
+	}
+
 	// We are checking if this blocks forever
 	t.Logf("sctp prober test OK")
 }
