@@ -25,8 +25,9 @@ func HTTPProber(urls string) bool {
 // L4ServiceProber - Do a probe for L4 service end-points
 // sType is "tcp" or "udp" or "sctp"
 // sName is end-point IP address in string format
+// sHint is source address hint if any
 // returns true/false depending on whether probing was successful
-func L4ServiceProber(sType string, sName string) bool {
+func L4ServiceProber(sType string, sName string, sHint string) bool {
 	sOk := false
 	timeout := 1 * time.Second
 
@@ -58,11 +59,24 @@ func L4ServiceProber(sType string, sName string) bool {
 			Port:    svcPort,
 		}
 
-		cn, err := sctp.DialSCTP("sctp", nil, addr, false)
+		var laddr *sctp.SCTPAddr
+		sIp, err := net.ResolveIPAddr("ip", sHint)
+		if err == nil {
+			sips := []net.IPAddr{*sIp}
+			laddr = &sctp.SCTPAddr{
+				IPAddrs: sips,
+				Port:    12346,
+			}
+		}
+
+		cn, err := sctp.DialSCTP("sctp", laddr, addr, false)
 		if err != nil {
 			sOk = false
 		} else {
 			sOk = true
+		}
+
+		if cn != nil {
 			cn.Close()
 		}
 

@@ -1,2 +1,4 @@
 github.com/loxilb-io/sctp v0.0.0-20230512061258-63a8bc8f1b80 h1:rYO3BYcHt0ILY0sOeygtpUEEFsNS8KZBTbuEIW2foLk=
 github.com/loxilb-io/sctp v0.0.0-20230512061258-63a8bc8f1b80/go.mod h1:1a6hv8ISVQhnW5IVpW9o+OL6BAFlWiVpC0O4d19g+wQ=
+github.com/loxilb-io/sctp v0.0.0-20230512152123-70e9c76eb88a h1:ASVCk3Mk5n9fNJYJm1+QF9bsFCHysudzE8sj5nhj5P4=
+github.com/loxilb-io/sctp v0.0.0-20230512152123-70e9c76eb88a/go.mod h1:1a6hv8ISVQhnW5IVpW9o+OL6BAFlWiVpC0O4d19g+wQ=
