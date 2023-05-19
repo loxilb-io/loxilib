@@ -69,7 +69,7 @@ func L4ServiceProber(sType string, sName string, sHint string) bool {
 			}
 		}
 
-		cn, err := sctp.DialSCTP("sctp", laddr, addr, true)
+		cn, err := sctp.DialSCTP("sctp", laddr, addr, false)
 		if err != nil {
 			sOk = false
 		} else {
