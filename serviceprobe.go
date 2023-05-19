@@ -4,6 +4,7 @@
 package loxilib
 
 import (
+	"bytes"
 	"github.com/loxilb-io/sctp"
 	"net"
 	"net/http"
@@ -26,8 +27,10 @@ func HTTPProber(urls string) bool {
 // sType is "tcp" or "udp" or "sctp"
 // sName is end-point IP address in string format
 // sHint is source address hint if any
+// req is the request to be made to server (empty for none)
+// resp is the response expected from server (empty for none)
 // returns true/false depending on whether probing was successful
-func L4ServiceProber(sType string, sName string, sHint string) bool {
+func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 	sOk := false
 	timeout := 1 * time.Second
 
@@ -91,6 +94,23 @@ func L4ServiceProber(sType string, sName string, sHint string) bool {
 	}
 	if c != nil {
 		defer c.Close()
+	}
+
+	if req != "" && resp != "" {
+		c.SetDeadline(time.Now().Add(2 * time.Second))
+		_, err = c.Write([]byte(req))
+		if err != nil {
+			return false
+		}
+		aRb := []byte(resp)
+		rRb := []byte(resp)
+		_, err = c.Read(aRb)
+		if err != nil {
+			return false
+		}
+		if !bytes.Equal(aRb, rRb) {
+			return false
+		}
 	}
 
 	return sOk
