@@ -617,4 +617,10 @@ func TestProber(t *testing.T) {
 
 	// We are checking if this blocks forever
 	t.Logf("sctp prober test OK")
+
+	sOk := L4ServiceProber("udp", "192.168.20.55:12234", "", "", "")
+	t.Logf("udp prober test1 %v\n", sOk)
+
+	sOk = L4ServiceProber("udp", "127.0.0.1:12234", "", "", "")
+	t.Logf("udp prober test2 %v\n", sOk)
 }

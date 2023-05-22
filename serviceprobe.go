@@ -5,7 +5,11 @@ package loxilib
 
 import (
 	"bytes"
+	"context"
+	"encoding/binary"
 	"github.com/loxilb-io/sctp"
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 	"net"
 	"net/http"
 	"strconv"
@@ -39,16 +43,17 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		return true
 	}
 
-	if sType == "sctp" {
-		svcPair := strings.Split(sName, ":")
-		if len(svcPair) != 2 {
-			return false
-		}
+	svcPair := strings.Split(sName, ":")
+	if len(svcPair) != 2 {
+		return false
+	}
 
-		svcPort, err := strconv.Atoi(svcPair[1])
-		if err != nil {
-			return false
-		}
+	svcPort, err := strconv.Atoi(svcPair[1])
+	if err != nil {
+		return false
+	}
+
+	if sType == "sctp" {
 
 		epIp, err := net.ResolveIPAddr("ip", svcPair[0])
 		if err != nil {
@@ -110,6 +115,43 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		}
 		if !bytes.Equal(aRb, rRb) {
 			return false
+		}
+	} else if sType == "udp" {
+		var lc net.ListenConfig
+		c.SetDeadline(time.Now().Add(2 * time.Second))
+		_, err = c.Write([]byte("probe"))
+		if err != nil {
+			return false
+		}
+		sOk = true
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(2*time.Second))
+		defer cancel()
+		rc, err := lc.ListenPacket(ctx, "ip4:1", sHint)
+		if err != nil {
+			return sOk
+		}
+		defer rc.Close()
+		pktData := make([]byte, 1500)
+		rc.SetDeadline(time.Now().Add(1 * time.Second))
+		_, _, err = rc.ReadFrom(pktData)
+		if err != nil {
+			return sOk
+		}
+		icmpNr, err := icmp.ParseMessage(1, pktData)
+		if err != nil {
+			return sOk
+		}
+		if icmpNr.Code == 3 && len(pktData) >= 8+20+8 {
+			iph, err := ipv4.ParseHeader(pktData[8:])
+			if err != nil {
+				return sOk
+			}
+			if iph.Dst.String() == svcPair[0] && iph.Protocol == 17 {
+				dport := int(binary.BigEndian.Uint16(pktData[30:32]))
+				if dport == svcPort {
+					sOk = false
+				}
+			}
 		}
 	}
 
