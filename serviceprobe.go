@@ -118,21 +118,21 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		}
 	} else if sType == "udp" {
 		var lc net.ListenConfig
-		c.SetDeadline(time.Now().Add(2 * time.Second))
-		_, err = c.Write([]byte("probe"))
-		if err != nil {
-			return false
-		}
-		sOk = true
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(2*time.Second))
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(3*time.Second))
 		defer cancel()
 		rc, err := lc.ListenPacket(ctx, "ip4:1", sHint)
 		if err != nil {
 			return sOk
 		}
 		defer rc.Close()
+		c.SetDeadline(time.Now().Add(1 * time.Second))
+		sOk = true
+		_, err = c.Write([]byte("probe"))
+		if err != nil {
+			return false
+		}
 		pktData := make([]byte, 1500)
-		rc.SetDeadline(time.Now().Add(1 * time.Second))
+		rc.SetDeadline(time.Now().Add(2 * time.Second))
 		_, _, err = rc.ReadFrom(pktData)
 		if err != nil {
 			return sOk
