@@ -132,7 +132,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 			return false
 		}
 		pktData := make([]byte, 1500)
-		rc.SetDeadline(time.Now().Add(2 * time.Second))
+		rc.SetDeadline(time.Now().Add(1 * time.Second))
 		_, _, err = rc.ReadFrom(pktData)
 		if err != nil {
 			return sOk
