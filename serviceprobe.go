@@ -50,7 +50,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 
 	portString := svcPair[len(svcPair)-1]
 	svcPort, err := strconv.Atoi(portString)
-	if err != nil || len(sName)-len(portString)-1 > 0 {
+	if err != nil || len(sName)-len(portString)-1 <= 0 {
 		return false
 	}
 
