@@ -44,18 +44,31 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 	}
 
 	svcPair := strings.Split(sName, ":")
-	if len(svcPair) != 2 {
+	if len(svcPair) < 2 {
 		return false
 	}
 
-	svcPort, err := strconv.Atoi(svcPair[1])
-	if err != nil {
+	portString := svcPair[len(svcPair)-1]
+	svcPort, err := strconv.Atoi(portString)
+	if err != nil || len(sName)-len(portString)-1 > 0 {
 		return false
 	}
+
+	netAddr := sName[:len(sName)-len(portString)-1]
 
 	if sType == "sctp" {
+		if netAddr[0:1] == "[" {
+			netAddr = strings.Trim(netAddr, "[")
+			netAddr = strings.Trim(netAddr, "]")
+		}
 
-		epIp, err := net.ResolveIPAddr("ip", svcPair[0])
+		network := "ip4"
+
+		if IsNetIPv6(netAddr) {
+			network = "ip6"
+		}
+
+		epIp, err := net.ResolveIPAddr(network, netAddr)
 		if err != nil {
 			return false
 		}
@@ -68,7 +81,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		}
 
 		var laddr *sctp.SCTPAddr
-		sIp, err := net.ResolveIPAddr("ip", sHint)
+		sIp, err := net.ResolveIPAddr(network, sHint)
 		if err == nil {
 			sips := []net.IPAddr{*sIp}
 			laddr = &sctp.SCTPAddr{
