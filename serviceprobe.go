@@ -112,6 +112,8 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 	}
 	if c != nil {
 		defer c.Close()
+	} else {
+		return sOk
 	}
 
 	if req != "" && resp != "" {
