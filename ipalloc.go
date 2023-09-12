@@ -15,15 +15,22 @@ const (
 	IPClusterDefault = "default"
 	IP4Len           = 4
 	IP6Len           = 16
+	IPAMNoIdent      = ""
 )
 
 // IdentKey - key of IP Pool
 type IdentKey string
 
 // Generate a key with a combination of id and port.
-func getIdentKey(id uint32, proto string) IdentKey {
+func getIdentKey(idString string) IdentKey {
+	lowerProto := strings.ToLower(idString)
+	return IdentKey(lowerProto)
+}
+
+// Make a identifier with a combination of name, id and port.
+func MakeIPAMIdent(name string, id uint32, proto string) string {
 	lowerProto := strings.ToLower(string(proto))
-	return IdentKey(fmt.Sprintf("%d|%s", id, lowerProto))
+	return fmt.Sprintf("%s|%d|%s", name, id, lowerProto)
 }
 
 // IPRange - Defines an IPRange
@@ -91,9 +98,9 @@ func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 }
 
 // ReserveIP - Don't allocate this IP address/ID pair from the given cluster and CIDR range
-// If id is 0, a new IP address will be allocated else IP addresses will be shared and
+// If id is empty, a new IP address will be allocated else IP addresses will be shared and
 // it will be same as the first IP address allocted for this range
-func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPString string, proto string) error {
+func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, idString string, IPString string) error {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	_, ipn, err := net.ParseCIDR(cidr)
@@ -124,14 +131,14 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPStri
 		return errors.New("no such IP Range")
 	}
 
-	key := getIdentKey(id, proto)
+	key := getIdentKey(idString)
 	if _, ok := ipr.ident[key]; ok {
-		if id != 0 {
+		if idString != "" {
 			return errors.New("ip Range,Ident,proto exists")
 		}
 	}
 
-	if id == 0 || !ipr.fOK {
+	if idString == "" || !ipr.fOK {
 		retIndex := diffIPIndex(ipr.ipNet.IP, IP)
 		if retIndex <= 0 {
 			if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
@@ -154,9 +161,9 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, id uint32, IPStri
 }
 
 // AllocateNewIP - Allocate a New IP address from the given cluster and CIDR range
-// If id is 0, a new IP address will be allocated else IP addresses will be shared and
+// If idString is empty, a new IP address will be allocated else IP addresses will be shared and
 // it will be same as the first IP address allocted for this range
-func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32, proto string) (net.IP, error) {
+func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, idString string) (net.IP, error) {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	var newIndex uint64
@@ -179,14 +186,14 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32, pr
 		return net.IP{0, 0, 0, 0}, errors.New("no such IP Range")
 	}
 
-	key := getIdentKey(id, proto)
+	key := getIdentKey(idString)
 	if _, ok := ipr.ident[key]; ok {
-		if id != 0 {
+		if idString != "" {
 			return net.IP{0, 0, 0, 0}, errors.New("ip/ident exists")
 		}
 	}
 
-	if id == 0 || !ipr.fOK {
+	if idString == "" || !ipr.fOK {
 		newIndex, err = ipr.freeID.GetCounter()
 		if err != nil {
 			return net.IP{0, 0, 0, 0}, errors.New("ip Alloc counter failure")
@@ -207,7 +214,7 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, id uint32, pr
 }
 
 // DeAllocateIP - Deallocate the IP address from the given cluster and CIDR range
-func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, id uint32, IPString string, proto string) error {
+func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPString string) error {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	_, _, err := net.ParseCIDR(cidr)
@@ -228,7 +235,7 @@ func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, id uint32, IPS
 		return errors.New("no such IP Range")
 	}
 
-	key := getIdentKey(id, proto)
+	key := getIdentKey(idString)
 	if _, ok := ipr.ident[key]; !ok {
 		return errors.New("ip Range - Ident not found")
 	}
