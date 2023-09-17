@@ -301,6 +301,13 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 			start = 0
 		}
 
+		val := Ntohl(IPtonl(ip))
+		msk := uint32(((1 << (32 - sz)) - 1))
+		if val&msk != 0 {
+			start = uint64(val & msk)
+			ignore = start + 1
+		}
+
 		iprSz = (1 << (32 - sz)) - ignore
 	} else {
 		ignore := uint64(0)
