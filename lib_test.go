@@ -584,6 +584,54 @@ func TestIPAlloc(t *testing.T) {
 	if ip.String() != "71.71.71.0" {
 		t.Fatalf("Failed IP Alloc for 71.71.71.0/31: %s:%s", ip.String(), "71.71.71.0")
 	}
+
+	ipa.AddIPRange(IPClusterDefault, "192.168.10.252/24")
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.10.252/24", IPAMNoIdent)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.10.252/24 - Check Alloc Algo")
+	}
+
+	if ip.String() != "192.168.10.252" {
+		t.Fatalf("Failed IP Alloc for 192.168.10.252/24: %s:%s", ip.String(), "192.168.10.252")
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.10.252/24", IPAMNoIdent)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.10.252/24 - Check Alloc Algo")
+	}
+
+	if ip.String() != "192.168.10.253" {
+		t.Fatalf("Failed IP Alloc for 192.168.10.252/24: %s:%s", ip.String(), "192.168.10.253")
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.10.252/24", IPAMNoIdent)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.10.252/24 - Check Alloc Algo")
+	}
+
+	if ip.String() != "192.168.10.254" {
+		t.Fatalf("Failed IP Alloc for 192.168.10.252/24: %s:%s", ip.String(), "192.168.10.254")
+	}
+
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.10.252/24", IPAMNoIdent)
+	if err == nil {
+		t.Fatal("Allocated IP Alloc for 192.168.10.252/24 - Check Alloc Algo")
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.10.252/24", IPAMNoIdent, "192.168.10.253")
+	if err != nil {
+		t.Fatalf("IP DeAlloc failed for %s:%s", "192.168.10.253", err)
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.10.252/24", IPAMNoIdent)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.10.252/24 - Check Alloc Algo")
+	}
+
+	if ip.String() != "192.168.10.253" {
+		t.Fatalf("Failed IP Alloc for 192.168.10.252/24: %s:%s", ip.String(), "192.168.10.253")
+	}
+
 }
 
 func TestProber(t *testing.T) {
