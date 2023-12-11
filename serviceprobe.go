@@ -135,7 +135,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		var lc net.ListenConfig
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(3*time.Second))
 		defer cancel()
-		rc, err := lc.ListenPacket(ctx, "ip4:1", sHint)
+		rc, err := lc.ListenPacket(ctx, "ip4:1", "0.0.0.0")
 		if err != nil {
 			return sOk
 		}
@@ -148,7 +148,12 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		}
 		pktData := make([]byte, 1500)
 		rc.SetDeadline(time.Now().Add(1 * time.Second))
-		_, _, err = rc.ReadFrom(pktData)
+		_, err = c.Read(pktData)
+		if err == nil {
+			return sOk
+		}
+
+		plen, _, err := rc.ReadFrom(pktData)
 		if err != nil {
 			return sOk
 		}
@@ -156,7 +161,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		if err != nil {
 			return sOk
 		}
-		if icmpNr.Code == 3 && len(pktData) >= 8+20+8 {
+		if icmpNr.Code == 3 && plen >= 8+20+8 {
 			iph, err := ipv4.ParseHeader(pktData[8:])
 			if err != nil {
 				return sOk
