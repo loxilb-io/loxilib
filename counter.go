@@ -72,7 +72,7 @@ func (C *Counter) ReserveCounter(id uint64) error {
 		return errors.New("Range")
 	}
 
-	if C.cap <= 0 || C.start == ^uint64(0) || C.counters[id] == ^uint64(0) {
+	if C.cap <= 0 || C.start == ^uint64(0) {
 		return errors.New("Overflow")
 	}
 
