@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 )
 
@@ -39,7 +40,7 @@ type IPRange struct {
 	freeID *Counter
 	fOK    bool
 	first  uint64
-	ident  map[IdentKey]struct{}
+	ident  map[IdentKey]int
 }
 
 // IPClusterPool - Holds IP ranges for a cluster
@@ -138,8 +139,9 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, idString string, 
 		}
 	}
 
+	var retIndex uint64
 	if idString == "" || !ipr.fOK {
-		retIndex := diffIPIndex(ipr.ipNet.IP, IP)
+		retIndex = diffIPIndex(ipr.ipNet.IP, IP)
 		if retIndex <= 0 {
 			if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
 				return errors.New("ip return index not found")
@@ -155,8 +157,11 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, idString string, 
 		}
 	}
 
-	ipr.ident[key] = struct{}{}
+	if idString == "" {
+		key = getIdentKey(strconv.FormatInt(int64(retIndex), 10))
+	}
 
+	ipr.ident[key]++
 	return nil
 }
 
@@ -206,7 +211,11 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, idString stri
 		newIndex = ipr.first
 	}
 
-	ipr.ident[key] = struct{}{}
+	if idString == "" {
+		key = getIdentKey(strconv.FormatInt(int64(newIndex), 10))
+	}
+
+	ipr.ident[key]++
 
 	retIP := addIPIndex(ipn.IP, uint64(newIndex))
 
@@ -235,9 +244,12 @@ func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPSt
 		return errors.New("no such IP Range")
 	}
 
-	key := getIdentKey(idString)
+	var key IdentKey
+	key = getIdentKey(idString)
 	if _, ok := ipr.ident[key]; !ok {
-		return errors.New("ip Range - Ident not found")
+		if idString != "" {
+			return errors.New("ip Range - Ident not found")
+		}
 	}
 
 	retIndex := diffIPIndex(ipr.ipNet.IP, IP)
@@ -247,9 +259,18 @@ func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPSt
 		}
 	}
 
-	delete(ipr.ident, key)
+	if idString == "" {
+		key = getIdentKey(strconv.FormatInt(int64(retIndex), 10))
+	}
 
-	if len(ipr.ident) == 0 {
+	if _, ok := ipr.ident[key]; !ok {
+		return errors.New("ip Range - key not found")
+	}
+
+	ipr.ident[key]--
+
+	if ipr.ident[key] <= 0 {
+		delete(ipr.ident, key)
 		err = ipr.freeID.PutCounter(retIndex)
 		if err != nil {
 			return errors.New("ip Range counter failure")
@@ -335,7 +356,7 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 		return errors.New("ip pool alloc failed")
 	}
 
-	ipr.ident = make(map[IdentKey]struct{})
+	ipr.ident = make(map[IdentKey]int)
 	ipCPool.pool[cidr] = ipr
 
 	return nil
