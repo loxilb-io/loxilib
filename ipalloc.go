@@ -209,6 +209,7 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, idString stri
 		}
 	} else {
 		newIndex = ipr.first
+		ipr.freeID.ReserveCounter(newIndex)
 	}
 
 	if idString == "" {
