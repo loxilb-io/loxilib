@@ -5,9 +5,10 @@ package loxilib
 
 import (
 	"fmt"
-	"github.com/loxilb-io/sctp"
 	"net"
 	"testing"
+
+	"github.com/loxilb-io/sctp"
 )
 
 type Tk struct {
@@ -121,6 +122,13 @@ func TestTrie(t *testing.T) {
 		t.Fatalf("failed to add %s:%d", route, data)
 	}
 
+	route = "14.1.48.16/28"
+	data = 120
+	res = trieR.AddTrie(route, data)
+	if res != 0 {
+		t.Fatalf("failed to add %s:%d", route, data)
+	}
+
 	// If we need to dump trie elements
 	// Run # go test -v .
 	trieR.Trie2String(&tk)
@@ -138,6 +146,11 @@ func TestTrie(t *testing.T) {
 	ret2, ipn, rdata2 := trieR.FindTrie("8.8.8.8")
 	if ret2 != 0 || (*ipn).String() != "8.8.8.8/32" || rdata2 != 1200 {
 		t.Fatalf("failed to find %d %s %d", ret, "8.8.8.8", rdata)
+	}
+
+	ret, ipn, rdata = trieR.FindTrie("14.1.48.28")
+	if ret != 0 || (*ipn).String() != "14.1.48.16/28" || rdata != 120 {
+		t.Fatalf("failed to find %d %s %d", ret, "14.1.48.28", rdata)
 	}
 
 	route = "0.0.0.0/0"
@@ -647,15 +660,7 @@ func TestIPAlloc(t *testing.T) {
 		}
 	}
 
-	ipamIdent = MakeIPAMIdent("", 80, "tcp")
-	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
-	if err != nil {
-		ipamIdent = IPAMNoIdent
-		ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
-		if err != nil {
-			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
-		}
-	}
+	fmt.Printf("allocIP %s\n", ip1.String())
 
 	ipamIdent = MakeIPAMIdent("", 80, "tcp")
 	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
@@ -667,6 +672,8 @@ func TestIPAlloc(t *testing.T) {
 		}
 	}
 
+	fmt.Printf("allocIP %s\n", ip1.String())
+
 	ipamIdent = MakeIPAMIdent("", 80, "tcp")
 	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
 	if err != nil {
@@ -676,6 +683,18 @@ func TestIPAlloc(t *testing.T) {
 			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
 		}
 	}
+	fmt.Printf("allocIP %s\n", ip1.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+	if err != nil {
+		ipamIdent = IPAMNoIdent
+		ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+		if err != nil {
+			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
+		}
+	}
+	fmt.Printf("allocIP %s\n", ip1.String())
 
 	ipamIdent = MakeIPAMIdent("", 80, "tcp")
 	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
@@ -686,6 +705,7 @@ func TestIPAlloc(t *testing.T) {
 			t.Fatalf("IP Alloc failed for 192.168.82.210/29%s", err)
 		}
 	}
+	fmt.Printf("allocIP %s\n", ip1.String())
 
 	ipamIdent = MakeIPAMIdent("", 80, "tcp")
 	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
@@ -696,8 +716,9 @@ func TestIPAlloc(t *testing.T) {
 			t.Fatalf("IP unexpectedly alloced for 192.168.82.210/29:%s", err)
 		}
 	}
+	fmt.Printf("allocIP %s\n", ip1.String())
 
-	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.82.210/29", IPAMNoIdent, "192.168.82.211")
+	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.82.210/29", IPAMNoIdent, "192.168.82.212")
 	if err != nil {
 		t.Fatalf("IP DeAlloc failed for %s:%s", "192.168.82.211", err)
 	}
@@ -712,7 +733,7 @@ func TestIPAlloc(t *testing.T) {
 		}
 	}
 
-	if ip1.String() != "192.168.82.211" {
+	if ip1.String() != "192.168.82.212" {
 		t.Fatalf("IP alloced is not 192.168.82.211 for 192.168.82.210/29:%s", err)
 	}
 
@@ -761,6 +782,98 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatalf("IP alloced is not 192.168.82.210 for 192.168.82.210/29:%s", err)
 	}
 
+	fmt.Printf("allocIP %s\n", ip1.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+	if err != nil {
+		ipamIdent = IPAMNoIdent
+		ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+		if err != nil {
+			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
+		}
+	}
+
+	if ip1.String() == "192.168.82.210" {
+		t.Fatalf("IP alloced is  %s not 192.168.82.211 for 192.168.82.210/29:%s", ip1.String(), err)
+	}
+	fmt.Printf("allocIP %s\n", ip1.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+	if err != nil {
+		ipamIdent = IPAMNoIdent
+		ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+		if err != nil {
+			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
+		}
+	}
+
+	if ip1.String() == "192.168.82.210" {
+		t.Fatalf("IP alloced is not 192.168.82.212 for 192.168.82.210/29:%s", err)
+	}
+	fmt.Printf("allocIP %s\n", ip1.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+	if err != nil {
+		ipamIdent = IPAMNoIdent
+		ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+		if err != nil {
+			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
+		}
+	}
+
+	if ip1.String() == "192.168.82.210" {
+		t.Fatalf("IP alloced is not 192.168.82.212 for 192.168.82.210/29:%s", err)
+	}
+	fmt.Printf("allocIP %s\n", ip1.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+	if err != nil {
+		ipamIdent = IPAMNoIdent
+		ip1, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.82.210/29", ipamIdent)
+		if err != nil {
+			t.Fatalf("IP Alloc failed for 192.168.82.210/29:%s", err)
+		}
+	}
+
+	if ip1.String() == "192.168.82.210" {
+		t.Fatalf("IP alloced is not 192.168.82.212 for 192.168.82.210/29:%s", err)
+	}
+	fmt.Printf("allocIP %s\n", ip1.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ipa.AddIPRange(IPClusterDefault, "0.0.0.0/32")
+	ip0, err := ipa.AllocateNewIP(IPClusterDefault, "0.0.0.0/32", ipamIdent)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 0.0.0.0 - Check Alloc Algo")
+	}
+
+	fmt.Printf("allocIP %s\n", ip0.String())
+
+	ipamIdent = MakeIPAMIdent("", 80, "tcp")
+	ipa.AddIPRange(IPClusterDefault, "0.0.0.0/32")
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "0.0.0.0/32", ipamIdent)
+	if err == nil {
+		t.Fatal("Failed IP Alloc for 0.0.0.0 - Check Alloc Algo")
+	} else {
+		fmt.Printf("Hello --- %s\n", err)
+	}
+
+	ipamIdent1 := MakeIPAMIdent("", 90, "tcp")
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "0.0.0.0/32", ipamIdent1)
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 0.0.0.0 - Check Alloc Algo")
+	} else {
+		fmt.Printf("Hello ---  alloc %s\n", ip.String())
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "0.0.0.0/32", ipamIdent, ip0.String())
+	if err != nil {
+		t.Fatal("Failed IP DeAlloc for 0.0.0.0 - Check Alloc Algo")
+	}
 }
 
 func TestProber(t *testing.T) {

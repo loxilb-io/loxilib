@@ -285,16 +285,17 @@ func (t *TrieRoot) findTrieInt(tv *trieVar, currLevel int, ts *trieState) int {
 
 	// This assumes stride of length 8
 	var cval uint8 = tv.prefix[currLevel]
+	ocval := cval
 
 	for rPfxLen := TrieJmpLength; rPfxLen >= 0; rPfxLen-- {
 		shftBits := TrieJmpLength - rPfxLen
 		basePos := (1 << rPfxLen) - 1
 		// Find value relevant to currently remaining prefix len
-		cval = cval >> shftBits
+		cval = ocval >> shftBits
 		idx = basePos + int(cval)
 		pfxVal := (idx - basePos) << shftBits
 
-		if IsBitSetInArr(t.prefixArr[:], idx) == true {
+		if IsBitSetInArr(t.prefixArr[:], idx) {
 			ts.lastMatchLevel = currLevel
 			ts.lastMatchPfxLen = 8*currLevel + rPfxLen
 			ts.matchFound = true
@@ -305,7 +306,7 @@ func (t *TrieRoot) findTrieInt(tv *trieVar, currLevel int, ts *trieState) int {
 
 	cval = tv.prefix[currLevel]
 	ptrIdx := CountSetBitsInArr(t.ptrArr[:], int(cval)-1)
-	if IsBitSetInArr(t.ptrArr[:], int(cval)) == true {
+	if IsBitSetInArr(t.ptrArr[:], int(cval)) {
 		if t.ptrData[ptrIdx] != nil {
 			nextRoot := t.ptrData[ptrIdx]
 			ts.lastMatchTv.prefix[currLevel] = byte(cval)
@@ -430,7 +431,7 @@ func (t *TrieRoot) FindTrie(IP string) (int, *net.IPNet, TrieData) {
 	var ts = trieState{0, 0, 0, false, trieVar{}, false, 4, 0}
 	var cidr string
 
-	if t.v6 == false {
+	if !t.v6 {
 		cidr = IP + "/32"
 	} else {
 		cidr = IP + "/128"
@@ -443,8 +444,8 @@ func (t *TrieRoot) FindTrie(IP string) (int, *net.IPNet, TrieData) {
 
 	t.findTrieInt(&tv, 0, &ts)
 
-	if ts.matchFound == true {
-		if t.v6 == false {
+	if ts.matchFound {
+		if !t.v6 {
 			var res net.IP
 			for i := 0; i < 4; i++ {
 				res = append(res, ts.lastMatchTv.prefix[i])
