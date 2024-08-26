@@ -105,7 +105,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 	}
 
 	var c net.Conn
-	if sHint == "" {
+	if sHint == "" || sType == "udp" {
 		c, err = net.DialTimeout(sType, sName, timeout)
 	} else {
 		dialer := &net.Dialer{
