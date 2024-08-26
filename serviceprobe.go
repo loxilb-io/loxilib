@@ -104,7 +104,20 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		return sOk
 	}
 
-	c, err := net.DialTimeout(sType, sName, timeout)
+	var c net.Conn
+	if sHint == "" {
+		c, err = net.DialTimeout(sType, sName, timeout)
+	} else {
+		dialer := &net.Dialer{
+			LocalAddr: &net.TCPAddr{
+				IP:   net.ParseIP(sHint),
+				Port: 0,
+			},
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+		defer cancel()
+		c, err = dialer.DialContext(ctx, sType, sName)
+	}
 	if err != nil {
 		sOk = false
 	} else {
