@@ -24,6 +24,7 @@ const (
 	LogNotice
 	LogInfo
 	LogDebug
+	LogTrace
 )
 
 type Logger struct {
@@ -37,6 +38,7 @@ type Logger struct {
 	LogItNotice  *log.Logger
 	LogItInfo    *log.Logger
 	LogItDebug   *log.Logger
+	LogItTrace   *log.Logger
 }
 
 var (
@@ -53,7 +55,7 @@ func LogItInit(logFile string, logLevel LogLevelT, toTTY bool) *Logger {
 		log.Fatal(err)
 	}
 
-	if logLevel < LogEmerg || logLevel > LogDebug {
+	if logLevel < LogEmerg || logLevel > LogTrace {
 		log.Fatal(err)
 	}
 
@@ -69,6 +71,7 @@ func LogItInit(logFile string, logLevel LogLevelT, toTTY bool) *Logger {
 	logger.LogItNotice = log.New(file, "NOTI: ", log.Ldate|log.Ltime)
 	logger.LogItInfo = log.New(file, "INFO: ", log.Ldate|log.Ltime)
 	logger.LogItDebug = log.New(file, "DBG:  ", log.Ldate|log.Ltime)
+	logger.LogItTrace = log.New(file, "TRACE:  ", log.Ldate|log.Ltime)
 
 	if DefaultLogger == nil {
 		DefaultLogger = logger
@@ -86,33 +89,27 @@ func (logger *Logger) Log(l LogLevelT, format string, v ...interface{}) {
 	switch l {
 	case LogEmerg:
 		logger.LogItEmer.Printf(format, v...)
-		break
 	case LogAlert:
 		logger.LogItAlert.Printf(format, v...)
-		break
 	case LogCritical:
 		logger.LogItCrit.Printf(format, v...)
-		break
 	case LogError:
 		logger.LogItErr.Printf(format, v...)
-		break
 	case LogWarning:
 		logger.LogItWarn.Printf(format, v...)
-		break
 	case LogNotice:
 		logger.LogItNotice.Printf(format, v...)
-		break
 	case LogInfo:
 		logger.LogItInfo.Printf(format, v...)
-		break
 	case LogDebug:
 		logger.LogItDebug.Printf(format, v...)
-		break
+	case LogTrace:
+		logger.LogItTrace.Printf(format, v...)
 	default:
 		break
 	}
 
-	if logger.LogTTY == true {
+	if logger.LogTTY {
 		fmt.Printf("%s ", time.Now().Format("2006-01-02 15:04:05"))
 		fmt.Printf(format, v...)
 	}
@@ -130,7 +127,7 @@ func LogIt(l LogLevelT, format string, v ...interface{}) {
 // LogItSetLevel - Set level of the logger
 func (logger *Logger) LogItSetLevel(logLevel LogLevelT) error {
 
-	if logLevel < LogEmerg || logLevel > LogDebug {
+	if logLevel < LogEmerg || logLevel > LogTrace {
 		return errors.New("LogLevel is out of bounds")
 	}
 
