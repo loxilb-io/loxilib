@@ -855,25 +855,139 @@ func TestIPAlloc(t *testing.T) {
 
 	ipamIdent = MakeIPAMIdent("", 80, "tcp")
 	ipa.AddIPRange(IPClusterDefault, "0.0.0.0/32")
-	ip, err = ipa.AllocateNewIP(IPClusterDefault, "0.0.0.0/32", ipamIdent)
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "0.0.0.0/32", ipamIdent)
 	if err == nil {
 		t.Fatal("Failed IP Alloc for 0.0.0.0 - Check Alloc Algo")
-	} else {
-		fmt.Printf("Hello --- %s\n", err)
 	}
 
 	ipamIdent1 := MakeIPAMIdent("", 90, "tcp")
 	ip, err = ipa.AllocateNewIP(IPClusterDefault, "0.0.0.0/32", ipamIdent1)
 	if err != nil {
 		t.Fatal("Failed IP Alloc for 0.0.0.0 - Check Alloc Algo")
-	} else {
-		fmt.Printf("Hello ---  alloc %s\n", ip.String())
 	}
+
+	fmt.Printf("allocIP %s\n", ip.String())
 
 	err = ipa.DeAllocateIP(IPClusterDefault, "0.0.0.0/32", ipamIdent, ip0.String())
 	if err != nil {
 		t.Fatal("Failed IP DeAlloc for 0.0.0.0 - Check Alloc Algo")
 	}
+
+	err = ipa.AddIPRange(IPClusterDefault, "192.168.0.1-192.168.0.5")
+	if err != nil {
+		t.Fatal("Failed to add IP Range for 192.168.0.1-192.168.0.5", err)
+	}
+
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "")
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "")
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	for i := 0; i < 3; i++ {
+		ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "")
+		if err != nil {
+			t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+		}
+		fmt.Printf("allocIP %s\n", ip.String())
+	}
+
+	_, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "")
+	if err == nil {
+		t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "", "192.168.0.2")
+	if err != nil {
+		fmt.Printf("Dealloc failed %s\n", err)
+		t.Fatal("Failed IP DeAlloc for 192.168.0.2- Check Alloc Algo")
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "", "192.168.0.2")
+	if err == nil {
+		t.Fatal("IP DeAlloc unexpected for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "")
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	if ip.String() != "192.168.0.2" {
+		t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "", "192.168.0.3")
+	if err != nil {
+		t.Fatal("IP DeAlloc unexpected for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	err = ipa.DeAllocateIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "", "192.168.0.1")
+	if err != nil {
+		t.Fatal("IP DeAlloc unexpected for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+
+	ip, err = ipa.AllocateNewIP(IPClusterDefault, "192.168.0.1-192.168.0.5", "")
+	if err != nil {
+		t.Fatal("Failed IP Alloc for 192.168.0.1-192.168.0.5 - Check Alloc Algo")
+	}
+	fmt.Printf("allocIP %s\n", ip.String())
+
+	err = ipa.AddIPRange("poolx", "17.17.17.1-17.17.17.3")
+	if err != nil {
+		t.Fatal("Failed to add IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
+	ip, err = ipa.AllocateNewIP("poolx", "17.17.17.1-17.17.17.3", "")
+	if err != nil {
+		t.Fatal("Failed to add IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
+	fmt.Printf("allocIP %s\n", ip.String())
+
+	err = ipa.ReserveIP("poolx", "17.17.17.1-17.17.17.3", "", "17.17.17.2")
+	if err != nil {
+		fmt.Printf("Reserve Error %s\n", err)
+		t.Fatal("IP Reserve failed for 17.17.17.1-17.17.17.3 - Check Alloc Algo")
+	}
+
+	ip, err = ipa.AllocateNewIP("poolx", "17.17.17.1-17.17.17.3", "")
+	if err != nil {
+		t.Fatal("Failed to add IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
+	fmt.Printf("allocIP %s\n", ip.String())
+
+	err = ipa.DeAllocateIP("poolx", "17.17.17.1-17.17.17.3", "", "17.17.17.3")
+	if err != nil {
+		t.Fatal("Failed to deallocate IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
+	err = ipa.ReserveIP("poolx", "17.17.17.1-17.17.17.3", "", "17.17.17.3")
+	if err != nil {
+		fmt.Printf("Reserve Error %s\n", err)
+		t.Fatal("IP Reserve failed for 17.17.17.1-17.17.17.3 - Check Alloc Algo")
+	}
+
+	err = ipa.DeAllocateIP("poolx", "17.17.17.1-17.17.17.3", "", "17.17.17.2")
+	if err != nil {
+		t.Fatal("Failed to deallocate IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
+	_, err = ipa.AllocateNewIP("poolx", "17.17.17.1-17.17.17.3", "")
+	if err != nil {
+		t.Fatal("Failed to add IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
+	_, err = ipa.AllocateNewIP("poolx", "17.17.17.1-17.17.17.3", "")
+	if err == nil {
+		t.Fatal("Failed to add IP Range for 17.17.17.1-17.17.17.3", err)
+	}
+
 }
 
 func TestProber(t *testing.T) {

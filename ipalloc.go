@@ -36,11 +36,14 @@ func MakeIPAMIdent(name string, id uint32, proto string) string {
 
 // IPRange - Defines an IPRange
 type IPRange struct {
-	ipNet  net.IPNet
-	freeID *Counter
-	fOK    bool
-	first  uint64
-	ident  map[IdentKey]int
+	isRange bool
+	startIP net.IP
+	endIP   net.IP
+	ipNet   net.IPNet
+	freeID  *Counter
+	fOK     bool
+	first   uint64
+	ident   map[IdentKey]int
 }
 
 // IPClusterPool - Holds IP ranges for a cluster
@@ -72,21 +75,24 @@ func addIPIndex(ip net.IP, index uint64) net.IP {
 }
 
 func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
-	var index uint64
+	index := uint64(0)
 	iplen := 0
 	if IsNetIPv4(baseIP.String()) {
 		iplen = IP4Len
 	} else {
 		iplen = IP6Len
 	}
+
 	arrIndex := len(baseIP) - iplen
 	arrIndex1 := len(IP) - iplen
 
-	for i := 0; i < IP6Len && arrIndex < iplen; i++ {
+	for i := 0; i < IP6Len && arrIndex < len(baseIP) && arrIndex1 < len(IP); i++ {
+
 		basev := uint8(baseIP[arrIndex])
 		ipv := uint8(IP[arrIndex1])
+
 		if basev > ipv {
-			return 0
+			return ^uint64(0)
 		}
 
 		index = uint64(ipv - basev)
@@ -104,19 +110,33 @@ func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, idString string, IPString string) error {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
-	_, ipn, err := net.ParseCIDR(cidr)
+	var baseIP net.IP
 
+	_, ipn, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return errors.New("invalid CIDR")
+		if strings.Contains(cidr, "-") {
+			ipBlock := strings.Split(cidr, "-")
+			if len(ipBlock) != 2 {
+				return errors.New("invalid ip-range")
+			}
+
+			startIP := net.ParseIP(ipBlock[0])
+			lastIP := net.ParseIP(ipBlock[1])
+			if startIP == nil || lastIP == nil {
+				return errors.New("invalid ip-range ips")
+			}
+			if IsNetIPv4(startIP.String()) && IsNetIPv6(lastIP.String()) ||
+				IsNetIPv6(startIP.String()) && IsNetIPv4(lastIP.String()) {
+				return errors.New("invalid ip-types ips")
+			}
+		} else {
+			return errors.New("invalid CIDR")
+		}
 	}
 
 	IP := net.ParseIP(IPString)
 	if IP == nil {
 		return errors.New("invalid IP String")
-	}
-
-	if !ipn.Contains(IP) {
-		return errors.New("ip string out of bounds")
 	}
 
 	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
@@ -132,6 +152,20 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, idString string, 
 		return errors.New("no such IP Range")
 	}
 
+	if ipr.isRange {
+		baseIP = ipr.startIP
+		d1 := diffIPIndex(ipr.startIP, ipr.endIP)
+		d2 := diffIPIndex(ipr.startIP, IP)
+		if d2 > d1 {
+			return errors.New("ip string out of range-bounds")
+		}
+	} else {
+		baseIP = ipr.ipNet.IP
+		if !ipn.Contains(IP) {
+			return errors.New("ip string out of bounds")
+		}
+	}
+
 	key := getIdentKey(idString)
 	if _, ok := ipr.ident[key]; ok {
 		if idString != "" {
@@ -141,12 +175,11 @@ func (ipa *IPAllocator) ReserveIP(cluster string, cidr string, idString string, 
 
 	var retIndex uint64
 	if idString == "" || !ipr.fOK {
-		retIndex = diffIPIndex(ipr.ipNet.IP, IP)
-		if retIndex <= 0 {
-			if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
-				return errors.New("ip return index not found")
-			}
+		retIndex = diffIPIndex(baseIP, IP)
+		if retIndex == ^uint64(0) {
+			return errors.New("ip return index not found")
 		}
+
 		err = ipr.freeID.ReserveCounter(retIndex)
 		if err != nil {
 			return errors.New("ip reserve counter failure")
@@ -172,10 +205,31 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, idString stri
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
 	var newIndex uint64
-	_, ipn, err := net.ParseCIDR(cidr)
+	var ip net.IP
 
+	_, ipn, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return net.IP{0, 0, 0, 0}, errors.New("invalid CIDR")
+		if strings.Contains(cidr, "-") {
+			ipBlock := strings.Split(cidr, "-")
+			if len(ipBlock) != 2 {
+				return net.IP{0, 0, 0, 0}, errors.New("invalid ip-range")
+			}
+
+			startIP := net.ParseIP(ipBlock[0])
+			lastIP := net.ParseIP(ipBlock[1])
+			if startIP == nil || lastIP == nil {
+				return net.IP{0, 0, 0, 0}, errors.New("invalid ip-range ips")
+			}
+			if IsNetIPv4(startIP.String()) && IsNetIPv6(lastIP.String()) ||
+				IsNetIPv6(startIP.String()) && IsNetIPv4(lastIP.String()) {
+				return net.IP{0, 0, 0, 0}, errors.New("invalid ip-types ips")
+			}
+			ip = startIP
+		} else {
+			return net.IP{0, 0, 0, 0}, errors.New("invalid CIDR")
+		}
+	} else {
+		ip = ipn.IP
 	}
 
 	if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
@@ -218,7 +272,7 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, idString stri
 
 	ipr.ident[key]++
 
-	retIP := addIPIndex(ipn.IP, uint64(newIndex))
+	retIP := addIPIndex(ip, uint64(newIndex))
 
 	return retIP, nil
 }
@@ -227,9 +281,28 @@ func (ipa *IPAllocator) AllocateNewIP(cluster string, cidr string, idString stri
 func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPString string) error {
 	var ipCPool *IPClusterPool
 	var ipr *IPRange
+	var baseIP net.IP
+
 	_, _, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return errors.New("invalid CIDR")
+		if strings.Contains(cidr, "-") {
+			ipBlock := strings.Split(cidr, "-")
+			if len(ipBlock) != 2 {
+				return errors.New("invalid ip-range")
+			}
+
+			startIP := net.ParseIP(ipBlock[0])
+			lastIP := net.ParseIP(ipBlock[1])
+			if startIP == nil || lastIP == nil {
+				return errors.New("invalid ip-range ips")
+			}
+			if IsNetIPv4(startIP.String()) && IsNetIPv6(lastIP.String()) ||
+				IsNetIPv6(startIP.String()) && IsNetIPv4(lastIP.String()) {
+				return errors.New("invalid ip-types ips")
+			}
+		} else {
+			return errors.New("invalid CIDR")
+		}
 	}
 
 	IP := net.ParseIP(IPString)
@@ -253,7 +326,13 @@ func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPSt
 		}
 	}
 
-	retIndex := diffIPIndex(ipr.ipNet.IP, IP)
+	if ipr.isRange {
+		baseIP = ipr.startIP
+	} else {
+		baseIP = ipr.ipNet.IP
+	}
+
+	retIndex := diffIPIndex(baseIP, IP)
 	if retIndex <= 0 {
 		if retIndex != 0 || (retIndex == 0 && ipr.first != 0) {
 			return errors.New("ip return index not found")
@@ -284,10 +363,31 @@ func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPSt
 // AddIPRange - Add a new IP Range for allocation in a cluster
 func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	var ipCPool *IPClusterPool
+	var startIP net.IP
+	var lastIP net.IP
 
+	isRange := false
 	ip, ipn, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return errors.New("invalid CIDR")
+		if strings.Contains(cidr, "-") {
+			isRange = true
+			ipBlock := strings.Split(cidr, "-")
+			if len(ipBlock) != 2 {
+				return errors.New("invalid ip-range")
+			}
+
+			startIP = net.ParseIP(ipBlock[0])
+			lastIP = net.ParseIP(ipBlock[1])
+			if startIP == nil || lastIP == nil {
+				return errors.New("invalid ip-range ips")
+			}
+			if IsNetIPv4(startIP.String()) && IsNetIPv6(lastIP.String()) ||
+				IsNetIPv6(startIP.String()) && IsNetIPv4(lastIP.String()) {
+				return errors.New("invalid ip-types ips")
+			}
+		} else {
+			return errors.New("invalid CIDR")
+		}
 	}
 
 	ipCPool = ipa.ipBlocks[IPClusterDefault]
@@ -296,6 +396,7 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 		if ipCPool = ipa.ipBlocks[cluster]; ipCPool == nil {
 			ipCPool = new(IPClusterPool)
 			ipCPool.name = cluster
+			ipCPool.pool = make(map[string]*IPRange)
 			ipa.ipBlocks[cluster] = ipCPool
 		}
 	}
@@ -311,34 +412,47 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	}
 
 	ipr := new(IPRange)
-	ipr.ipNet = *ipn
 	iprSz := uint64(0)
-	sz, _ := ipn.Mask.Size()
+	sz := 0
 	start := uint64(1)
-	if IsNetIPv4(ip.String()) {
-		ignore := uint64(0)
-		if sz != 32 && sz%8 == 0 {
-			ignore = 2
+
+	if !isRange {
+		ipr.ipNet = *ipn
+		sz, _ = ipn.Mask.Size()
+		if IsNetIPv4(ip.String()) {
+			ignore := uint64(0)
+			if sz != 32 && sz%8 == 0 {
+				ignore = 2
+			} else {
+				start = 0
+			}
+
+			val := Ntohl(IPtonl(ip))
+			msk := uint32(((1 << (32 - sz)) - 1))
+			if val&msk != 0 {
+				start = uint64(val & msk)
+				ignore = start + 1
+			}
+
+			iprSz = (1 << (32 - sz)) - ignore
 		} else {
-			start = 0
+			ignore := uint64(0)
+			if sz != 128 && sz%8 == 0 {
+				ignore = 2
+			} else {
+				start = 0
+			}
+			iprSz = (1 << (128 - sz)) - ignore
 		}
-
-		val := Ntohl(IPtonl(ip))
-		msk := uint32(((1 << (32 - sz)) - 1))
-		if val&msk != 0 {
-			start = uint64(val & msk)
-			ignore = start + 1
-		}
-
-		iprSz = (1 << (32 - sz)) - ignore
 	} else {
-		ignore := uint64(0)
-		if sz != 128 && sz%8 == 0 {
-			ignore = 2
-		} else {
-			start = 0
+		start = uint64(0)
+		ipr.isRange = true
+		ipr.startIP = startIP
+		ipr.endIP = lastIP
+		iprSz = diffIPIndex(startIP, lastIP)
+		if iprSz != 0 {
+			iprSz++
 		}
-		iprSz = (1 << (128 - sz)) - ignore
 	}
 
 	if iprSz < 1 {
