@@ -988,6 +988,15 @@ func TestIPAlloc(t *testing.T) {
 		t.Fatal("Failed to add IP Range for 17.17.17.1-17.17.17.3", err)
 	}
 
+	err = ipa.AddIPRange(IPClusterDefault, "192.169.0.1-192.169.0.1")
+	if err == nil {
+		t.Fatal("Failed to add IP Range for 192.169.0.1-192.169.0.1", err)
+	}
+
+	err = ipa.AddIPRange(IPClusterDefault, "192.169.0.3-192.169.0.1")
+	if err == nil {
+		t.Fatal("Failed to add IP Range for 192.169.0.3-192.169.0.1", err)
+	}
 }
 
 func TestProber(t *testing.T) {
