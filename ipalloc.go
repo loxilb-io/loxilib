@@ -77,6 +77,11 @@ func addIPIndex(ip net.IP, index uint64) net.IP {
 func diffIPIndex(baseIP net.IP, IP net.IP) uint64 {
 	index := uint64(0)
 	iplen := 0
+
+	if baseIP == nil || IP == nil {
+		return ^uint64(0)
+	}
+
 	if IsNetIPv4(baseIP.String()) {
 		iplen = IP4Len
 	} else {
@@ -360,6 +365,20 @@ func (ipa *IPAllocator) DeAllocateIP(cluster string, cidr string, idString, IPSt
 	return nil
 }
 
+// Contains - Check if IP is in IPrange
+func (i *IPRange) Contains(IP net.IP) bool {
+	if i.isRange {
+		d1 := diffIPIndex(i.startIP, i.endIP)
+		d2 := diffIPIndex(i.startIP, IP)
+		if d2 > d1 {
+			return false
+		}
+		return true
+	} else {
+		return i.ipNet.Contains(IP)
+	}
+}
+
 // AddIPRange - Add a new IP Range for allocation in a cluster
 func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	var ipCPool *IPClusterPool
@@ -406,7 +425,7 @@ func (ipa *IPAllocator) AddIPRange(cluster string, cidr string) error {
 	}
 
 	for _, ipr := range ipCPool.pool {
-		if ipr.ipNet.Contains(ip) {
+		if ipr.Contains(ip) {
 			return errors.New("existing IP Pool")
 		}
 	}
