@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"testing"
-
 	"github.com/loxilb-io/sctp"
 )
 
@@ -1036,4 +1035,10 @@ func TestProber(t *testing.T) {
 
 	sOk = L4ServiceProber("udp", "127.0.0.1:12234", "", "", "")
 	t.Logf("udp prober test2 %v\n", sOk)
+
+	sOk = L4ServiceProber("udp", "127.0.0.1:8080", "", "", "")
+	t.Logf("udp prober test3 %v\n", sOk)
+
+	sOk = L4ServiceProber("udp", "192.168.20.55:2234", "", "", "")
+	t.Logf("udp prober test4 %v\n\n\n", sOk)
 }
