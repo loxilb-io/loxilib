@@ -7,4 +7,4 @@ require (
 	golang.org/x/sys v0.8.0 // indirect
 )
 
-require github.com/loxilb-io/sctp v0.0.0-20240912025756-01894eac308b
+require github.com/loxilb-io/sctp v0.0.0-20241217032220-301b591b9ced

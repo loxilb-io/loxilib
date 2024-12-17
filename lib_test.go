@@ -5,9 +5,7 @@ package loxilib
 
 import (
 	"fmt"
-	"net"
 	"testing"
-	"github.com/loxilb-io/sctp"
 )
 
 type Tk struct {
@@ -999,38 +997,19 @@ func TestIPAlloc(t *testing.T) {
 }
 
 func TestProber(t *testing.T) {
-	epIp, err := net.ResolveIPAddr("ip", "127.0.0.1")
-	if err != nil {
-		t.Fatal("Failed to resolve IP")
-	}
+	sOk := L4ServiceProber("sctp", "192.168.20.58:8080", "", "", "")
+	t.Logf("sctp prober test1 %v", sOk)
 
-	ips := []net.IPAddr{*epIp}
+	sOk = L4ServiceProber("sctp", "[3ffe:cafe::1]:1346", "", "", "")
+	t.Logf("sctp prober test2 %v", sOk)
 
-	addr := &sctp.SCTPAddr{
-		IPAddrs: ips,
-		Port:    8080,
-	}
+	sOk = L4ServiceProber("tcp", "192.168.20.58:8081", "", "", "")
+	t.Logf("tcp prober test1 %v", sOk)
 
-	cn, err := sctp.DialSCTP("sctp", nil, addr, false)
-	if err == nil {
-		t.Logf("sctp prober connected")
-		cn.Close()
-	} else {
-		t.Logf("sctp prober not connected %s", err)
-	}
+	sOk = L4ServiceProber("sctp", "[3ffe:cafe::1]:1446", "", "", "")
+	t.Logf("tcp prober test2 %v", sOk)
 
-	cn, err = sctp.DialSCTP("sctp", nil, addr, true)
-	if err == nil {
-		t.Logf("sctp (block) prober connected")
-		cn.Close()
-	} else {
-		t.Logf("sctp (block) prober not connected %s", err)
-	}
-
-	// We are checking if this blocks forever
-	t.Logf("sctp prober test OK")
-
-	sOk := L4ServiceProber("udp", "192.168.20.55:12234", "", "", "")
+	sOk = L4ServiceProber("udp", "192.168.20.55:12234", "", "", "")
 	t.Logf("udp prober test1 %v\n", sOk)
 
 	sOk = L4ServiceProber("udp", "127.0.0.1:12234", "", "", "")
@@ -1039,6 +1018,13 @@ func TestProber(t *testing.T) {
 	sOk = L4ServiceProber("udp", "127.0.0.1:8080", "", "", "")
 	t.Logf("udp prober test3 %v\n", sOk)
 
+	sOk = L4ServiceProber("udp", "[::1]:8080", "", "", "")
+	t.Logf("udp prober test4 %v\n", sOk)
+
+	sOk = L4ServiceProber("udp", "[3ffe:cafe::1]:2020", "", "", "")
+	t.Logf("udp prober test5 %v\n", sOk)
+
 	sOk = L4ServiceProber("udp", "192.168.20.55:2234", "", "", "")
-	t.Logf("udp prober test4 %v\n\n\n", sOk)
+	t.Logf("udp prober test6 %v\n", sOk)
+
 }

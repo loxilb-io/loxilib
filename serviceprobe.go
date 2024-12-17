@@ -10,6 +10,7 @@ import (
 	"github.com/loxilb-io/sctp"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 	"net"
 	"net/http"
 	"os"
@@ -42,6 +43,50 @@ func waitForBoolChannelOrTimeout(ch <-chan bool, timeout time.Duration) (bool, b
 		return val, true
 	case <-time.After(timeout):
 		return false, false
+	}
+}
+
+func listenForICMP6UNreachable() {
+	conn, err := icmp.ListenPacket("ip6:ipv6-icmp", "::")
+	if err != nil {
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	buffer := make([]byte, 1500)
+	//conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	icmpRunner <- true
+	for {
+		n, _, err := conn.ReadFrom(buffer)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue // Ignore timeout errors
+			}
+			continue
+		}
+
+		// Parse the ICMPv6 message
+		message, err := icmp.ParseMessage(ipv6.ICMPTypeDestinationUnreachable.Protocol(), buffer[:n])
+		if err != nil {
+			continue
+		}
+
+		// Check for Destination Unreachable messages
+		if message.Type == ipv6.ICMPTypeDestinationUnreachable {
+			if body, ok := message.Body.(*icmp.DstUnreach); ok {
+				pktData := body.Data
+				if len(pktData) >= 48 {
+					destIP := net.IP(pktData[24:40]).String()
+					dport := int(pktData[42])<<8 | int(pktData[43])
+					svcLock.Lock()
+					key := SvcKey{Dst: destIP, Port: dport}
+					if svcWait := svcs[key]; svcWait != nil {
+						svcWait.wait <- true
+					}
+					svcLock.Unlock()
+				}
+			}
+		}
 	}
 }
 
@@ -109,6 +154,8 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		icmpRunner = make(chan bool)
 		svcs = map[SvcKey]*SvcWait{}
 		go listenForICMPUNreachable()
+		go listenForICMP6UNreachable()
+		<-icmpRunner
 		<-icmpRunner
 	}
 	svcLock.Unlock()
@@ -133,15 +180,14 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 	}
 
 	netAddr := sName[:len(sName)-len(portString)-1]
+	if netAddr[0:1] == "[" {
+		netAddr = strings.Trim(netAddr, "[")
+		netAddr = strings.Trim(netAddr, "]")
+	}
 
 	if sType == "sctp" {
-		if netAddr[0:1] == "[" {
-			netAddr = strings.Trim(netAddr, "[")
-			netAddr = strings.Trim(netAddr, "]")
-		}
 
 		network := "ip4"
-
 		if IsNetIPv6(netAddr) {
 			network = "ip6"
 		}
@@ -225,7 +271,7 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 	} else if sType == "udp" {
 
 		svcLock.Lock()
-		key := SvcKey{Dst: svcPair[0], Port: svcPort}
+		key := SvcKey{Dst: netAddr, Port: svcPort}
 		svcWait := svcs[key]
 		if svcWait == nil {
 			svcWait = &SvcWait{wait: make(chan bool)}
@@ -245,7 +291,12 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 			return sOk
 		}
 
-		_, unRch := waitForBoolChannelOrTimeout(svcWait.wait, 1*time.Second)
+		period := 1 * time.Second
+		if IsNetIPv6(netAddr) {
+			period = 3 * time.Second
+		}
+
+		_, unRch := waitForBoolChannelOrTimeout(svcWait.wait, period)
 		if unRch {
 			sOk = false
 		}
