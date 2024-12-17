@@ -10,6 +10,8 @@ github.com/loxilb-io/sctp v0.0.0-20240912024735-b9c5910e672f h1:sm8UnXJa4dAV/wTE
 github.com/loxilb-io/sctp v0.0.0-20240912024735-b9c5910e672f/go.mod h1:g3xKRvSWoeijv487mRGw3sLDacD9bC+wRQ4QebiafiQ=
 github.com/loxilb-io/sctp v0.0.0-20240912025756-01894eac308b h1:QZHlUZTWMpghNQW/OzdKFY2PhhPFMPAjsfRSLZkAONU=
 github.com/loxilb-io/sctp v0.0.0-20240912025756-01894eac308b/go.mod h1:g3xKRvSWoeijv487mRGw3sLDacD9bC+wRQ4QebiafiQ=
+github.com/loxilb-io/sctp v0.0.0-20241217032220-301b591b9ced h1:XRB++1zTq2epcR8c8K+OK0+8RnEg/Rf6a73qs+rJ0fE=
+github.com/loxilb-io/sctp v0.0.0-20241217032220-301b591b9ced/go.mod h1:g3xKRvSWoeijv487mRGw3sLDacD9bC+wRQ4QebiafiQ=
 golang.org/x/net v0.10.0 h1:X2//UzNDwYmtCLn7To6G58Wr6f5ahEAQgKNzv9Y951M=
 golang.org/x/net v0.10.0/go.mod h1:0qNGK6F8kojg2nk9dLZ2mShWaEBan6FAoqfSigmmuDg=
 golang.org/x/sys v0.8.0 h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=
