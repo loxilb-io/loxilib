@@ -49,7 +49,9 @@ func waitForBoolChannelOrTimeout(ch <-chan bool, timeout time.Duration) (bool, b
 func listenForICMP6UNreachable() {
 	conn, err := icmp.ListenPacket("ip6:ipv6-icmp", "::")
 	if err != nil {
-		os.Exit(1)
+		// This can be due to ipv6 not enabled
+		// In such a case probes for udp6 will not be available
+		return
 	}
 	defer conn.Close()
 
