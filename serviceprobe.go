@@ -51,6 +51,7 @@ func listenForICMP6UNreachable() {
 	if err != nil {
 		// This can be due to ipv6 not enabled
 		// In such a case probes for udp6 will not be available
+		icmpRunner <- true
 		return
 	}
 	defer conn.Close()
