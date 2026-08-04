@@ -7,10 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/loxilb-io/sctp"
-	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 	"net"
 	"net/http"
 	"os"
@@ -18,6 +14,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/loxilb-io/sctp"
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 )
 
 // SvcWait - Channel to wait for service reply
@@ -262,13 +263,12 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 		if err != nil {
 			return false
 		}
-		aRb := []byte(resp)
-		rRb := []byte(resp)
-		_, err = c.Read(aRb)
+		aRb := make([]byte, 1500)
+		n, err := c.Read(aRb)
 		if err != nil {
 			return false
 		}
-		if !bytes.Equal(aRb, rRb) {
+		if !bytes.Equal(aRb[:n], []byte(resp)) {
 			return false
 		}
 	} else if sType == "udp" {
@@ -311,3 +311,4 @@ func L4ServiceProber(sType string, sName string, sHint, req, resp string) bool {
 
 	return sOk
 }
+
